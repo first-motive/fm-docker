@@ -1,0 +1,51 @@
+# First Motive ROS2 base image — the root of the inheritance chain.
+#
+# Minimal on purpose: ROS2 Humble, the colcon/vcs/rosdep build tooling, and the
+# packages needed to view any robot (xacro + robot/joint state publishers +
+# foxglove-bridge). Control, simulation, MoveIt, and the TUI are NOT here — each
+# lives in a downstream repo's image, FROM this base or FROM a layer above it.
+# Keeping the base small is what lets the layers stay cached and independent.
+#
+# ros:humble-ros-base is multi-arch (arm64 + amd64) — the same Dockerfile builds
+# on Apple silicon (OrbStack) and on Linux. No GPU or hardware assumptions live
+# here; those are compose overlays in the consuming repo.
+FROM ros:humble-ros-base
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Workspace tooling + the minimal viz/description runtime.
+#   colcon / vcstool / rosdep / pip  — build the workspace, pull deps
+#   build-essential / cmake / git    — compile message + C++ packages
+#   assimp-utils                     — mesh conversion for description meshes
+#   rosidl-generator-dds-idl         — the vendored Unitree message packages call
+#                                      rosidl_generate_dds_interfaces but omit the
+#                                      dep, so rosdep cannot supply it; carry it
+#                                      here so G1 arm_sdk message types build
+#   foxglove-bridge                  — websocket bridge for Foxglove Studio (viz)
+#   robot-state-publisher /          — publish TF from the URDF so any robot can
+#     joint-state-publisher            be viewed without a controller running
+#   xacro                            — expand the URDF/xacro descriptions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3-colcon-common-extensions \
+      python3-vcstool \
+      python3-rosdep \
+      python3-pip \
+      build-essential \
+      cmake \
+      git \
+      assimp-utils \
+      ros-humble-foxglove-bridge \
+      ros-humble-robot-state-publisher \
+      ros-humble-joint-state-publisher \
+      ros-humble-xacro \
+      ros-humble-rosidl-generator-dds-idl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ws
+
+# Entrypoint sources the ROS distro + the workspace overlay (if built).
+COPY ros_entrypoint.sh /ros_entrypoint.sh
+RUN chmod +x /ros_entrypoint.sh
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]
