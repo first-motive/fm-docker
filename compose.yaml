@@ -1,0 +1,25 @@
+# Shared compose base for every First Motive ROS2 repo. Always combine with a
+# host overlay:
+#   macOS:  docker compose -f compose.yaml -f compose.macos.yaml up
+#   Linux:  docker compose -f compose.yaml -f compose.linux.yaml up
+#
+# This base is generic — it runs a published layered image and mounts a host
+# workspace. The consuming repo's run.sh exports two env vars:
+#   FM_IMAGE   image to run    (e.g. ghcr.io/first-motive/fm-robot:humble)
+#              default: the fm-docker base, so `up` works with no env set
+#   FM_WS      host workspace mounted at /ws   (default: current dir)
+#
+# The overlays carry only host-specific bits (platform, ports, GPU, devices,
+# X11) — never per-repo specifics. Foxglove bridge listens on 8765; the overlay
+# decides whether the port is published to the host.
+services:
+  fm:
+    image: ${FM_IMAGE:-ghcr.io/first-motive/fm-docker:humble}
+    volumes:
+      - ${FM_WS:-.}:/ws:cached
+    working_dir: /ws
+    expose:
+      - "8765"
+    stdin_open: true
+    tty: true
+    command: bash
