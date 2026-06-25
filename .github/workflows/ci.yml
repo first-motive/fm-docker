@@ -1,0 +1,56 @@
+name: ci
+
+# PR + push validation. Shellcheck the host scripts, build the base image for
+# amd64 without pushing, and smoke-test that the ROS runtime and the
+# viz/description packages are present. Publishing stays in publish.yml (main +
+# image change only); this never pushes.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run shellcheck
+        run: shellcheck scripts/*.sh run.sh install.sh
+
+  image:
+    name: build amd64 + smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build (amd64, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.base
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: fm-docker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: |
+          docker run --rm fm-docker:ci bash -lc '
+            set -e
+            source "/opt/ros/${ROS_DISTRO}/setup.bash"
+            pkgs="$(ros2 pkg list)"
+            for p in robot_state_publisher joint_state_publisher xacro foxglove_bridge; do
+              echo "$pkgs" | grep -qx "$p" || { echo "missing pkg: $p"; exit 1; }
+            done
+            command -v xacro >/dev/null || { echo "xacro CLI missing"; exit 1; }
+            echo "ROS ${ROS_DISTRO} sourced; description/viz packages present"
+          '
