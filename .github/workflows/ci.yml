@@ -1,0 +1,95 @@
+name: ci
+
+# PR + push validation. Shellcheck the host scripts, build the base image for
+# amd64 without pushing, and smoke-test that the ROS runtime and the
+# viz/description packages are present. Publishing stays in publish.yml (main +
+# image change only); this never pushes.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Pin the version so CI matches local dev — the runner's bundled
+      # shellcheck drifts and flags findings a newer release dropped.
+      - name: Install shellcheck 0.11.0
+        run: |
+          curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz \
+            | tar -xJ
+          sudo install shellcheck-v0.11.0/shellcheck /usr/local/bin/shellcheck
+          shellcheck --version
+      - name: Run shellcheck
+        run: shellcheck scripts/*.sh run.sh install.sh
+
+  curl-smoke:
+    name: macos curl|bash path
+    # run.sh and install.sh are curl|bash-able. Piping a script into bash makes
+    # bash read it from stdin, which breaks process substitution (no /dev/fd) —
+    # the regression that printed "detect_os: command not found". Only a real
+    # macOS runner reproduces it; shellcheck cannot. Pipe each script into bash
+    # exactly as the docs tell users to, and assert the lib loaded.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: run.sh + install.sh load lib over piped curl
+        run: |
+          set -euo pipefail
+          repo="$PWD"
+          # Run from an empty dir so each script takes its network (curl) branch
+          # — the piped path real users hit — instead of finding lib.sh next to a
+          # clone. lib.sh is fetched from main; the regression under test is the
+          # script's own load mechanism, not lib.sh content. FM_SELFTEST stops
+          # each script after deps load + OS resolve, before any OrbStack install
+          # or container launch.
+          cd "$(mktemp -d)"
+          for s in run.sh install.sh; do
+            echo "== $s =="
+            out="$(cat "$repo/$s" | FM_SELFTEST=1 bash 2>&1)" \
+              || { echo "$out"; echo "FAIL: $s exited non-zero under curl|bash"; exit 1; }
+            echo "$out"
+            echo "$out" | grep -q "selftest ok" \
+              || { echo "FAIL: $s did not load lib via piped curl"; exit 1; }
+          done
+          echo "curl|bash path OK"
+
+  image:
+    name: build amd64 + smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build (amd64, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.base
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: fm-docker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: |
+          docker run --rm fm-docker:ci bash -lc '
+            set -e
+            source "/opt/ros/${ROS_DISTRO}/setup.bash"
+            pkgs="$(ros2 pkg list)"
+            for p in robot_state_publisher joint_state_publisher xacro foxglove_bridge; do
+              echo "$pkgs" | grep -qx "$p" || { echo "missing pkg: $p"; exit 1; }
+            done
+            command -v xacro >/dev/null || { echo "xacro CLI missing"; exit 1; }
+            echo "ROS ${ROS_DISTRO} sourced; description/viz packages present"
+          '

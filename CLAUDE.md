@@ -24,8 +24,9 @@ traces back here. Part of First Motive's ROS2 stack, consumed by
   downstream repos' images, each `FROM` its parent. Do not add a downstream
   layer's deps here — that would re-monolith the base.
 - `compose.yaml` is generic: it runs `${FM_IMAGE}` and mounts `${FM_WS}`. The
-  overlays carry only host-specific bits (platform, ports, GPU, devices, X11).
-  Keep per-repo specifics in the consumer repo, not here.
+  `compose.macos.yaml` overlay carries only host-specific bits (platform, ports).
+  Containers are macOS-only — Linux runs ROS2 Humble natively, so there is no
+  Linux overlay here. Keep per-repo specifics in the consumer repo, not here.
 
 ## Publishing
 

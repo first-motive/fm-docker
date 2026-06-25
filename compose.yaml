@@ -1,7 +1,6 @@
 # Shared compose base for every First Motive ROS2 repo. Always combine with a
 # host overlay:
 #   macOS:  docker compose -f compose.yaml -f compose.macos.yaml up
-#   Linux:  docker compose -f compose.yaml -f compose.linux.yaml up
 #
 # This base is generic — it runs a published layered image and mounts a host
 # workspace. The consuming repo's run.sh exports two env vars:
