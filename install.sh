@@ -17,7 +17,7 @@ IMAGE="ghcr.io/first-motive/fm-docker:humble"
 RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/main"
 
 # Resolve the script's own dir (empty when piped via curl|bash).
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || true)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
 
 # Load the shared host checks: from the clone if present, else fetch them —
 # install.sh is itself curl|bash-able, so the library may not be on disk. The
