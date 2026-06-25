@@ -28,8 +28,14 @@ if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/scripts/lib.sh" ]; then
   # shellcheck source=scripts/lib.sh
   source "$SCRIPT_DIR/scripts/lib.sh"
 else
-  # shellcheck disable=SC1090
-  source <(curl -fsSL "$RAW_BASE/scripts/lib.sh")
+  # eval, not source <(...): process substitution needs /dev/fd, which does not
+  # resolve when bash reads this script from a stdin pipe (curl | bash), leaving
+  # the lib functions undefined. eval "$(...)" captures into a string instead.
+  # Capture and validate first: eval of an empty/failed fetch is a silent no-op
+  # that surfaces later as a confusing "detect_os: command not found".
+  lib="$(curl -fsSL "$RAW_BASE/scripts/lib.sh")" || { echo "ERROR: failed to fetch lib.sh" >&2; exit 1; }
+  [ -n "$lib" ] || { echo "ERROR: empty lib.sh download" >&2; exit 1; }
+  eval "$lib"
 fi
 
 PULL=1
