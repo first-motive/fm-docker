@@ -68,7 +68,7 @@ native ROS2 or the container per host and starts a fresh shell.
 | `ros_entrypoint.sh`   | Sources the ROS distro, then the workspace overlay if built.  |
 | `compose.yaml`        | Shared compose base. Consumers set `FM_IMAGE` + `FM_WS`.      |
 | `compose.macos.yaml`  | macOS (Apple silicon, OrbStack) overlay — sim only, no GPU.   |
-| `compose.linux.yaml`  | Linux overlay — GPU, device passthrough, X11.                 |
+| `compose.linux.yaml`  | Linux overlay — device passthrough, X11, host net (no GPU).    |
 | `install.sh`          | Host setup: container runtime + base image pull. Curl-able.   |
 | `run.sh`              | Pull (or `--build`) the base, drop into an interactive shell. |
 | `scripts/`            | macOS runtime helpers: install OrbStack, ensure the daemon.   |
