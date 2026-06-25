@@ -148,5 +148,11 @@ if [ "$BUILD" -eq 1 ]; then
 fi
 
 echo "Starting container shell (pull: $PULL_MODE)..."
+# curl | bash leaves fd 0 on the piped script, not the terminal, so the
+# container shell would read EOF and exit at once — no interactive prompt.
+# Reattach the controlling terminal when one exists; otherwise keep the
+# inherited stdin (no tty, e.g. CI).
+SHELL_STDIN=/dev/stdin
+{ : < /dev/tty; } 2>/dev/null && SHELL_STDIN=/dev/tty
 exec docker compose -f "$COMPOSE_DIR/compose.yaml" -f "$COMPOSE_DIR/compose.macos.yaml" \
-  run --pull "$PULL_MODE" --rm fm bash
+  run --pull "$PULL_MODE" --rm fm bash < "$SHELL_STDIN"
