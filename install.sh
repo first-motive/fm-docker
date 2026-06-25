@@ -47,6 +47,14 @@ for arg in "$@"; do
 done
 
 OS=$(detect_os) || exit 1
+
+# CI self-test hook: deps loaded and OS resolved — stop before any host changes.
+# Lets the macOS curl-path test exercise the piped fetch without installing.
+if [ -n "${FM_SELFTEST:-}" ]; then
+  echo "selftest ok: lib loaded, os=$OS"
+  exit 0
+fi
+
 if [ "$OS" != "macos" ]; then
   echo "ERROR: install.sh is macOS-only; Linux runs ROS2 Humble natively (see run.sh)." >&2
   exit 1

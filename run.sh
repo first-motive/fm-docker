@@ -71,6 +71,13 @@ if [ -z "$OS" ]; then
   OS=$(detect_os) || exit 1
 fi
 
+# CI self-test hook: deps loaded and OS resolved — stop before any runtime work.
+# Lets the macOS curl-path test exercise the piped fetch without OrbStack.
+if [ -n "${FM_SELFTEST:-}" ]; then
+  echo "selftest ok: lib loaded, os=$OS"
+  exit 0
+fi
+
 # --- Linux: bare-metal — source the host ROS2 + workspace overlay, exec a shell ---
 if [ "$OS" = "linux" ]; then
   if [ ! -f "$ROS_SETUP" ]; then
