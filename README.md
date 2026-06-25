@@ -1,13 +1,11 @@
 # fm-docker
 
-Shared container base for First Motive's ROS2 (Humble) robot stack. This repo
-holds the base image, the entrypoint, and the host compose overlays that every
-First Motive package repo builds on. It is the root of the image inheritance
-chain — each downstream repo's image is `FROM` its parent, so dependencies point
-down through clear layers instead of one monolithic build.
+Shared container base for First Motive's ROS2 (Humble) robot stack.
 
-Each layer below is a separate package repo under the `first-motive` GitHub org,
-assembled by the `fm-ros2` orchestrator.
+It holds the base image, the entrypoint, and the host compose overlays. As the
+root of the image inheritance chain, each downstream image is `FROM` its parent
+— dependencies layer down instead of forming one monolith. Each layer is a
+separate `first-motive` repo, assembled by the `fm-ros2` orchestrator.
 
 ## Image Inheritance
 
@@ -19,18 +17,18 @@ fm-docker base       ros:humble + tooling + viz + xacro/rsp        (view any rob
    └ fm-app     FROM robot  + sim & teleop apt deps + textual      (full-stack launcher)
 ```
 
-The base image is published to GHCR multi-arch (arm64 + amd64), so the same tag
-runs on Apple silicon (OrbStack) and on Linux:
+The base image is published to GHCR multi-arch (arm64 + amd64), so one tag runs
+on Apple silicon (OrbStack) and Linux:
 
 ```
 ghcr.io/first-motive/fm-docker:humble
 ```
 
-## Quick Start
+## Install
 
-This repo is self-sufficient: it carries the host tooling to set up a container
-runtime and to drop into the base image, so you can verify the layer without a
-consumer repo.
+This repo is self-sufficient — it carries the host tooling to set up a runtime
+and drop into the base image, so you can verify the layer without a consumer
+repo. `install.sh` is idempotent and safe to re-run.
 
 ```bash
 # Set up the host runtime + pull the base image (no clone needed).
@@ -41,6 +39,12 @@ curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/install
 ./install.sh --no-pull  # runtime setup only, skip the image pull
 ```
 
+On macOS, `install.sh` installs OrbStack and starts the daemon. On Linux, it
+reports the Docker / NVIDIA / X11 tooling it finds and points at the fix for
+anything missing.
+
+## Usage
+
 ```bash
 # Drop into a ROS2 Humble shell. macOS always uses the container; Linux runs
 # native ROS2 when /opt/ros/humble is present, else falls back to the container.
@@ -48,17 +52,12 @@ curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/install
 
 ./run.sh --container    # force the container even when native ROS2 is present
 ./run.sh --local        # force native bare-metal (Linux only)
-./run.sh --pull         # container path: force a refresh of :humble first
+./run.sh --pull         # container path: refresh :humble first
 ./run.sh --build        # container path: build Dockerfile.base locally
 ```
 
 The container reuses the local `:humble` image and pulls only when it is
-missing — the base rarely changes, so re-entry stays fast and works offline.
-
-On macOS, `install.sh` installs OrbStack and starts the daemon; on Linux it
-reports the Docker / NVIDIA / X11 tooling it finds and points at the fix for
-what is missing — `install.sh` is idempotent, safe to re-run. `run.sh` picks
-native ROS2 or the container per host and starts a fresh shell.
+missing. The base rarely changes, so re-entry stays fast and works offline.
 
 ## Contents
 
@@ -91,19 +90,16 @@ FM_IMAGE=ghcr.io/first-motive/fm-robot:humble \
   docker compose -f compose.yaml -f compose.linux.yaml up
 ```
 
-`FM_IMAGE` selects the layered image to run; `FM_WS` (default: current dir) is the
-host workspace mounted at `/ws`. Only `FM_IMAGE` is required — `FM_WS` falls back
-to the directory you run compose from.
+`FM_IMAGE` (required) selects the layered image to run. `FM_WS` is the host
+workspace mounted at `/ws`, defaulting to the directory you run compose from.
 
 ## CI
 
-Two workflows guard the repo:
-
-- `ci.yml` runs on every pull request and push to `main`: shellcheck on the host
-  scripts, an amd64 build of `Dockerfile.base` (no push), and a smoke test that
-  the ROS runtime and the description/viz packages are present.
-- `publish.yml` runs only on a push to `main` that touches the image, building
-  multi-arch (arm64 + amd64) and pushing `:humble` to GHCR.
+- `ci.yml` — every PR and push to `main`: shellcheck on host scripts, an amd64
+  build of `Dockerfile.base` (no push), and a smoke test for the ROS runtime and
+  description/viz packages.
+- `publish.yml` — push to `main` that touches the image: multi-arch (arm64 +
+  amd64) build, push `:humble` to GHCR.
 
 ## License
 
