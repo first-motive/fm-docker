@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# fm-docker host installer. Brings a host to the point it can run the First
-# Motive ROS2 base image: a container runtime, plus the base image pulled
-# locally. Idempotent — safe to re-run.
+# fm-docker host installer (macOS only). Brings a Mac to the point it can run
+# the First Motive ROS2 base image: installs and starts OrbStack, then pulls the
+# base image locally. Idempotent — safe to re-run.
+#
+# Linux is not handled here — it runs ROS2 Humble natively (see run.sh), with no
+# container runtime to install.
 #
 # Curl-able (no clone needed):
 #   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/install.sh | bash
 #
 # From a clone:
-#   ./install.sh [--macos|--linux] [--no-pull]
+#   ./install.sh [--no-pull]
 #
-# OS is auto-detected; --macos / --linux force a path. --no-pull sets up the
-# runtime only and skips the image pull.
+# --no-pull sets up the runtime only and skips the image pull.
 set -euo pipefail
 
 IMAGE="ghcr.io/first-motive/fm-docker:humble"
@@ -30,19 +32,18 @@ else
   source <(curl -fsSL "$RAW_BASE/scripts/lib.sh")
 fi
 
-OS=""
 PULL=1
 for arg in "$@"; do
   case "$arg" in
-    --macos) OS="macos" ;;
-    --linux) OS="linux" ;;
     --no-pull) PULL=0 ;;
     *) echo "ERROR: unknown flag: $arg" >&2; exit 2 ;;
   esac
 done
 
-if [ -z "$OS" ]; then
-  OS=$(detect_os) || exit 1
+OS=$(detect_os) || exit 1
+if [ "$OS" != "macos" ]; then
+  echo "ERROR: install.sh is macOS-only; Linux runs ROS2 Humble natively (see run.sh)." >&2
+  exit 1
 fi
 
 # Fetch + run an action script: from the clone if present, else over the network.
@@ -60,27 +61,6 @@ install_macos() {
   run_helper ensure-docker.sh
 }
 
-# Linux runtime is host-managed (Docker Engine, NVIDIA toolkit, X11). Report
-# what is present and point at the fix for what is missing; never hard-fail —
-# CPU-only, headless hosts are valid for dev and sim.
-check_linux() {
-  if has_docker; then
-    echo "docker:  $(docker --version)"
-  else
-    echo "WARN: docker not found — install Docker Engine: https://docs.docker.com/engine/install/" >&2
-  fi
-  if has_gpu; then
-    echo "nvidia:  usable GPU present"
-  else
-    echo "WARN: no usable NVIDIA GPU — GPU passthrough unavailable (CPU-only is fine for dev/sim)" >&2
-  fi
-  if has_xhost; then
-    echo "xhost:   present (X11 GUI passthrough available)"
-  else
-    echo "WARN: xhost not found — install x11-xserver-utils for rviz/GUI passthrough" >&2
-  fi
-}
-
 pull_image() {
   if ! has_docker; then
     echo "WARN: docker unavailable — skipping image pull" >&2
@@ -90,11 +70,8 @@ pull_image() {
   docker pull "$IMAGE" || echo "WARN: pull failed — pull later: docker pull $IMAGE" >&2
 }
 
-echo "fm-docker install — OS: $OS"
-case "$OS" in
-  macos) install_macos ;;
-  linux) check_linux ;;
-esac
+echo "fm-docker install (macOS) ..."
+install_macos
 if [ "$PULL" -eq 1 ]; then
   pull_image
 fi
