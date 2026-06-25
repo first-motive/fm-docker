@@ -42,17 +42,19 @@ curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/install
 ```
 
 ```bash
-# Pull :humble and drop into an interactive shell via compose + host overlay.
+# Drop into an interactive shell via compose + host overlay.
+# Uses the local :humble image when present, pulls only when it is missing.
 ./run.sh
 
+./run.sh --pull         # force a refresh of :humble before starting
 ./run.sh --build        # build Dockerfile.base locally instead of pulling
 ./run.sh --linux        # force the Linux overlay (otherwise auto-detected)
 ```
 
 On macOS, `install.sh` installs OrbStack and starts the daemon; on Linux it
 reports the Docker / NVIDIA / X11 tooling it finds and points at the fix for
-what is missing — `install.sh` is idempotent, safe to re-run. `run.sh` always
-pulls (or builds) and starts a fresh shell.
+what is missing — `install.sh` is idempotent, safe to re-run. `run.sh` reuses
+the local image and starts a fresh shell; `--pull` forces a refresh.
 
 ## Contents
 
