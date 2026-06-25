@@ -42,19 +42,23 @@ curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/install
 ```
 
 ```bash
-# Drop into an interactive shell via compose + host overlay.
-# Uses the local :humble image when present, pulls only when it is missing.
+# Drop into a ROS2 Humble shell. macOS always uses the container; Linux runs
+# native ROS2 when /opt/ros/humble is present, else falls back to the container.
 ./run.sh
 
-./run.sh --pull         # force a refresh of :humble before starting
-./run.sh --build        # build Dockerfile.base locally instead of pulling
-./run.sh --linux        # force the Linux overlay (otherwise auto-detected)
+./run.sh --container    # force the container even when native ROS2 is present
+./run.sh --local        # force native bare-metal (Linux only)
+./run.sh --pull         # container path: force a refresh of :humble first
+./run.sh --build        # container path: build Dockerfile.base locally
 ```
+
+The container reuses the local `:humble` image and pulls only when it is
+missing — the base rarely changes, so re-entry stays fast and works offline.
 
 On macOS, `install.sh` installs OrbStack and starts the daemon; on Linux it
 reports the Docker / NVIDIA / X11 tooling it finds and points at the fix for
-what is missing — `install.sh` is idempotent, safe to re-run. `run.sh` reuses
-the local image and starts a fresh shell; `--pull` forces a refresh.
+what is missing — `install.sh` is idempotent, safe to re-run. `run.sh` picks
+native ROS2 or the container per host and starts a fresh shell.
 
 ## Contents
 
