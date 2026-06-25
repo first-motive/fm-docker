@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 # Drop into a ROS2 Humble shell for the fm-docker base.
 #
-# Dispatch (the container is macOS-first; Linux prefers native ROS2):
-#   macOS                    → container (no native ROS2 path)
-#   Linux + /opt/ros/humble  → bare-metal (native, fast, no docker)
-#   Linux, no Humble         → container (run-anywhere fallback)
+# Dispatch is determined by the host OS:
+#   macOS  → container (OrbStack; no native ROS2 on macOS)
+#   Linux  → bare-metal (native ROS2 at /opt/ros/humble; no container path)
 #
-# Force a path with --container (always docker) or --local (always bare-metal,
-# Linux only). On the container path, --pull forces an image refresh and --build
-# builds Dockerfile.base locally.
+# Linux runs native only — there is no container fallback. On the macOS
+# container path, --pull forces an image refresh and --build builds
+# Dockerfile.base locally.
 #
-#   ./run.sh [--macos|--linux] [--container|--local] [--pull|--build]
+#   ./run.sh [--macos|--linux] [--pull|--build]
 #
-# OS is auto-detected; --macos / --linux force the overlay.
+# OS is auto-detected; --macos / --linux force it.
 set -euo pipefail
 
-# Keep the caller's directory: it is the workspace for the bare-metal overlay
+# Keep the caller's directory: it is the workspace for the bare-metal shell
 # and the mount (FM_WS) for the container. The script's own dir holds the
 # compose files, so cd there for the container path.
 INVOKE_DIR="$PWD"
@@ -28,15 +27,12 @@ IMAGE="ghcr.io/first-motive/fm-docker:humble"
 ROS_SETUP="/opt/ros/humble/setup.bash"
 
 OS=""
-MODE=""               # "", container, local — empty means auto-resolve
 BUILD=0
 PULL_MODE="missing"   # have the image? use it. compose pulls only when absent.
 for arg in "$@"; do
   case "$arg" in
     --macos) OS="macos" ;;
     --linux) OS="linux" ;;
-    --container) MODE="container" ;;
-    --local) MODE="local" ;;
     --pull) PULL_MODE="always" ;;
     --build) BUILD=1 ;;
     *) echo "ERROR: unknown flag: $arg" >&2; exit 2 ;;
@@ -47,28 +43,15 @@ if [ -z "$OS" ]; then
   OS=$(detect_os) || exit 1
 fi
 
-# Resolve the mode when not forced: macOS always uses the container; Linux runs
-# native Humble when the host has it, else falls back to the container.
-if [ -z "$MODE" ]; then
-  if [ "$OS" = "linux" ] && has_ros_humble; then
-    MODE="local"
-  else
-    MODE="container"
-  fi
-fi
-
-# --- bare-metal path: source the host ROS2 + workspace overlay, exec a shell ---
-if [ "$MODE" = "local" ]; then
-  if [ "$OS" = "macos" ]; then
-    echo "ERROR: --local needs native ROS2; macOS has none. Drop --local to use the container." >&2
-    exit 1
-  fi
+# --- Linux: bare-metal — source the host ROS2 + workspace overlay, exec a shell ---
+if [ "$OS" = "linux" ]; then
   if [ ! -f "$ROS_SETUP" ]; then
-    echo "ERROR: --local needs ROS2 Humble at /opt/ros/humble; not found. Drop --local to use the container." >&2
+    echo "ERROR: Linux needs native ROS2 Humble at /opt/ros/humble; not found." >&2
+    echo "       Install ROS2 Humble, or run on macOS for the container path." >&2
     exit 1
   fi
   if [ "$BUILD" -eq 1 ] || [ "$PULL_MODE" != "missing" ]; then
-    echo "WARN: --build / --pull apply to the container path; ignored for bare-metal." >&2
+    echo "WARN: --build / --pull apply to the macOS container path; ignored on Linux." >&2
   fi
   echo "Running native ROS2 Humble (bare-metal) in $INVOKE_DIR ..."
   # ROS setup scripts reference unbound vars; relax nounset while sourcing.
@@ -84,9 +67,9 @@ if [ "$MODE" = "local" ]; then
   exec bash
 fi
 
-# --- container path: compose + host overlay ---
+# --- macOS: container — compose + host overlay ---
 export FM_WS="${FM_WS:-$INVOKE_DIR}"   # mount the caller's dir at /ws
-OVERLAY="compose.${OS}.yaml"
+OVERLAY="compose.macos.yaml"
 
 if [ "$BUILD" -eq 1 ]; then
   echo "Building Dockerfile.base locally as $IMAGE ..."
