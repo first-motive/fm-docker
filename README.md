@@ -7,24 +7,7 @@ root of the image inheritance chain, each downstream image is `FROM` its parent
 — dependencies layer down instead of forming one monolith. Each layer is a
 separate `first-motive` repo, assembled by the `fm-ros2` orchestrator.
 
-## Image Inheritance
-
-```
-fm-docker base       ros:humble + tooling + viz + xacro/rsp        (view any robot)
-   └ fm-robot   FROM base    + ros2-control                        (description + control + sensors)
-        ├ fm-sim     FROM robot  + mujoco/gz/xvfb
-        └ fm-teleop  FROM robot  + moveit/servo
-   └ fm-app     FROM robot  + sim & teleop apt deps + textual      (full-stack launcher)
-```
-
-The base image is published to GHCR multi-arch (arm64 + amd64), so one tag runs
-on Apple silicon (OrbStack) and Linux:
-
-```
-ghcr.io/first-motive/fm-docker:humble
-```
-
-## Install
+## Quick Start
 
 This repo is self-sufficient — it carries the host tooling to set up a runtime
 and drop into the base image, so you can verify the layer without a consumer
@@ -43,8 +26,6 @@ On macOS, `install.sh` installs OrbStack and starts the daemon. On Linux, it
 reports the Docker / NVIDIA / X11 tooling it finds and points at the fix for
 anything missing.
 
-## Usage
-
 ```bash
 # Drop into a ROS2 Humble shell. macOS always uses the container; Linux runs
 # native ROS2 when /opt/ros/humble is present, else falls back to the container.
@@ -58,6 +39,23 @@ anything missing.
 
 The container reuses the local `:humble` image and pulls only when it is
 missing. The base rarely changes, so re-entry stays fast and works offline.
+
+## Image Inheritance
+
+```
+fm-docker base       ros:humble + tooling + viz + xacro/rsp        (view any robot)
+   └ fm-robot   FROM base    + ros2-control                        (description + control + sensors)
+        ├ fm-sim     FROM robot  + mujoco/gz/xvfb
+        └ fm-teleop  FROM robot  + moveit/servo
+   └ fm-app     FROM robot  + sim & teleop apt deps + textual      (full-stack launcher)
+```
+
+The base image is published to GHCR multi-arch (arm64 + amd64), so one tag runs
+on Apple silicon (OrbStack) and Linux:
+
+```
+ghcr.io/first-motive/fm-docker:humble
+```
 
 ## Contents
 
