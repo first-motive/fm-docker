@@ -1,3 +1,6 @@
 # Imported into consumer workspaces, never committed there; nothing to ignore
 # here yet. Kept so the repo carries a baseline ignore file.
 .DS_Store
+
+# Planning artifacts — working files, not committed history.
+plans/
