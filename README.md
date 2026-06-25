@@ -9,36 +9,38 @@ separate `first-motive` repo, assembled by the `fm-ros2` orchestrator.
 
 ## Quick Start
 
-This repo is self-sufficient — it carries the host tooling to set up a runtime
-and drop into the base image, so you can verify the layer without a consumer
-repo. `install.sh` is idempotent and safe to re-run.
+This repo is self-sufficient — it carries the host tooling to drop into the base
+image, so you can verify the layer without a consumer repo. One command gets you
+a shell, no clone needed:
 
 ```bash
-# Set up the host runtime + pull the base image (no clone needed).
+curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/run.sh | bash
+```
+
+`run.sh` dispatches on the host OS:
+
+- **macOS** → container. OrbStack is installed and started automatically when
+  missing; the `:humble` image pulls on first run, then is reused offline.
+- **Linux** → native ROS2 at `/opt/ros/humble`. There is no container path on
+  Linux; without a native Humble install, `run.sh` exits with guidance.
+
+Piped via curl, `run.sh` caches `lib.sh` and the compose files under
+`~/.cache/fm-docker` and reuses them offline. From a clone, the same dispatch
+applies, plus the macOS build/refresh flags:
+
+```bash
+./run.sh            # OS-detected: macOS container, Linux native
+./run.sh --pull     # macOS: refresh the :humble image first
+./run.sh --build    # macOS: build Dockerfile.base locally (clone only)
+```
+
+To set up the macOS runtime and pull the image ahead of time, use `install.sh`
+(macOS-only, idempotent, also curl-able):
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/install.sh | bash
-
-# Or from a clone:
-./install.sh            # auto-detects macOS / Linux
-./install.sh --no-pull  # runtime setup only, skip the image pull
+./install.sh --no-pull  # from a clone: runtime only, skip the image pull
 ```
-
-On macOS, `install.sh` installs OrbStack and starts the daemon. On Linux, it
-reports the Docker / NVIDIA / X11 tooling it finds and points at the fix for
-anything missing.
-
-```bash
-# Drop into a ROS2 Humble shell. macOS always uses the container; Linux runs
-# native ROS2 when /opt/ros/humble is present, else falls back to the container.
-./run.sh
-
-./run.sh --container    # force the container even when native ROS2 is present
-./run.sh --local        # force native bare-metal (Linux only)
-./run.sh --pull         # container path: refresh :humble first
-./run.sh --build        # container path: build Dockerfile.base locally
-```
-
-The container reuses the local `:humble` image and pulls only when it is
-missing. The base rarely changes, so re-entry stays fast and works offline.
 
 ## Image Inheritance
 
@@ -64,11 +66,10 @@ ghcr.io/first-motive/fm-docker:humble
 | `Dockerfile.base`     | Minimal ROS2 Humble base: build tooling, viz, xacro, rsp/jsp. |
 | `ros_entrypoint.sh`   | Sources the ROS distro, then the workspace overlay if built.  |
 | `compose.yaml`        | Shared compose base. Consumers set `FM_IMAGE` + `FM_WS`.      |
-| `compose.macos.yaml`  | macOS (Apple silicon, OrbStack) overlay — sim only, no GPU.   |
-| `compose.linux.yaml`  | Linux overlay — device passthrough, X11, host net (no GPU).    |
-| `install.sh`          | Host setup: container runtime + base image pull. Curl-able.   |
-| `run.sh`              | Pull (or `--build`) the base, drop into an interactive shell. |
-| `scripts/lib.sh`      | Sourced host checks (OS, ROS2, GPU, docker, X11) — no actions. |
+| `compose.macos.yaml`  | macOS (Apple silicon, OrbStack) overlay — dev/build/sim/dataset; no GPU. |
+| `install.sh`          | macOS host setup: install OrbStack + pull base image. Curl-able. |
+| `run.sh`              | Drop into a shell — macOS container or Linux native. Curl-able. |
+| `scripts/lib.sh`      | Sourced host checks (OS, docker) — no actions.                |
 | `scripts/`            | macOS runtime actions: install OrbStack, ensure the daemon.   |
 | `COLCON_IGNORE`       | Marks the repo so colcon never builds it as a package.        |
 
@@ -82,10 +83,6 @@ overlay adds the host-specific bits:
 # macOS
 FM_IMAGE=ghcr.io/first-motive/fm-robot:humble \
   docker compose -f compose.yaml -f compose.macos.yaml up
-
-# Linux
-FM_IMAGE=ghcr.io/first-motive/fm-robot:humble \
-  docker compose -f compose.yaml -f compose.linux.yaml up
 ```
 
 `FM_IMAGE` (required) selects the layered image to run. `FM_WS` is the host
