@@ -21,6 +21,9 @@ set -euo pipefail
 INVOKE_DIR="$PWD"
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+# shellcheck source=scripts/lib.sh
+source scripts/lib.sh
+
 IMAGE="ghcr.io/first-motive/fm-docker:humble"
 ROS_SETUP="/opt/ros/humble/setup.bash"
 
@@ -41,17 +44,13 @@ for arg in "$@"; do
 done
 
 if [ -z "$OS" ]; then
-  case "$(uname -s)" in
-    Darwin) OS="macos" ;;
-    Linux) OS="linux" ;;
-    *) echo "ERROR: unsupported OS: $(uname -s)" >&2; exit 1 ;;
-  esac
+  OS=$(detect_os) || exit 1
 fi
 
 # Resolve the mode when not forced: macOS always uses the container; Linux runs
 # native Humble when the host has it, else falls back to the container.
 if [ -z "$MODE" ]; then
-  if [ "$OS" = "linux" ] && [ -d /opt/ros/humble ]; then
+  if [ "$OS" = "linux" ] && has_ros_humble; then
     MODE="local"
   else
     MODE="container"

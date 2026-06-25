@@ -16,6 +16,20 @@ set -euo pipefail
 IMAGE="ghcr.io/first-motive/fm-docker:humble"
 RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/main"
 
+# Resolve the script's own dir (empty when piped via curl|bash).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || true)"
+
+# Load the shared host checks: from the clone if present, else fetch them —
+# install.sh is itself curl|bash-able, so the library may not be on disk. The
+# checks must run in this shell, so source rather than execute.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/scripts/lib.sh" ]; then
+  # shellcheck source=scripts/lib.sh
+  source "$SCRIPT_DIR/scripts/lib.sh"
+else
+  # shellcheck disable=SC1090
+  source <(curl -fsSL "$RAW_BASE/scripts/lib.sh")
+fi
+
 OS=""
 PULL=1
 for arg in "$@"; do
@@ -28,16 +42,10 @@ for arg in "$@"; do
 done
 
 if [ -z "$OS" ]; then
-  case "$(uname -s)" in
-    Darwin) OS="macos" ;;
-    Linux) OS="linux" ;;
-    *) echo "ERROR: unsupported OS: $(uname -s)" >&2; exit 1 ;;
-  esac
+  OS=$(detect_os) || exit 1
 fi
 
-# Resolve the helper-script source. A clone runs them from scripts/; a piped
-# install (BASH_SOURCE is not a real path) fetches them from the raw repo.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || true)"
+# Fetch + run an action script: from the clone if present, else over the network.
 run_helper() {
   local name="$1"
   if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/scripts/$name" ]; then
@@ -56,17 +64,17 @@ install_macos() {
 # what is present and point at the fix for what is missing; never hard-fail —
 # CPU-only, headless hosts are valid for dev and sim.
 check_linux() {
-  if command -v docker >/dev/null 2>&1; then
+  if has_docker; then
     echo "docker:  $(docker --version)"
   else
     echo "WARN: docker not found — install Docker Engine: https://docs.docker.com/engine/install/" >&2
   fi
-  if command -v nvidia-smi >/dev/null 2>&1; then
-    echo "nvidia:  GPU driver present"
+  if has_gpu; then
+    echo "nvidia:  usable GPU present"
   else
-    echo "WARN: nvidia-smi not found — GPU passthrough unavailable (CPU-only is fine for dev/sim)" >&2
+    echo "WARN: no usable NVIDIA GPU — GPU passthrough unavailable (CPU-only is fine for dev/sim)" >&2
   fi
-  if command -v xhost >/dev/null 2>&1; then
+  if has_xhost; then
     echo "xhost:   present (X11 GUI passthrough available)"
   else
     echo "WARN: xhost not found — install x11-xserver-utils for rviz/GUI passthrough" >&2
@@ -74,7 +82,7 @@ check_linux() {
 }
 
 pull_image() {
-  if ! command -v docker >/dev/null 2>&1; then
+  if ! has_docker; then
     echo "WARN: docker unavailable — skipping image pull" >&2
     return 0
   fi
@@ -87,5 +95,7 @@ case "$OS" in
   macos) install_macos ;;
   linux) check_linux ;;
 esac
-[ "$PULL" -eq 1 ] && pull_image
+if [ "$PULL" -eq 1 ]; then
+  pull_image
+fi
 echo "Done."

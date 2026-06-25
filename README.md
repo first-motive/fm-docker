@@ -71,7 +71,8 @@ native ROS2 or the container per host and starts a fresh shell.
 | `compose.linux.yaml`  | Linux overlay — device passthrough, X11, host net (no GPU).    |
 | `install.sh`          | Host setup: container runtime + base image pull. Curl-able.   |
 | `run.sh`              | Pull (or `--build`) the base, drop into an interactive shell. |
-| `scripts/`            | macOS runtime helpers: install OrbStack, ensure the daemon.   |
+| `scripts/lib.sh`      | Sourced host checks (OS, ROS2, GPU, docker, X11) — no actions. |
+| `scripts/`            | macOS runtime actions: install OrbStack, ensure the daemon.   |
 | `COLCON_IGNORE`       | Marks the repo so colcon never builds it as a package.        |
 
 ## Use From a Consumer Repo
