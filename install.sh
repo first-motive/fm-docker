@@ -7,7 +7,7 @@
 # container runtime to install.
 #
 # Curl-able (no clone needed):
-#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.0/install.sh | bash
 #
 # From a clone:
 #   ./install.sh [--no-pull]
@@ -18,7 +18,7 @@ set -euo pipefail
 IMAGE="ghcr.io/first-motive/fm-docker:humble"
 # fm-docker serves its own helper scripts; lib.sh is owned by fm-tools and
 # fetched from a pinned release tag (the single reuse home).
-RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/main"
+RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.0"
 FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.2.0"
 
 # Resolve the script's own dir (empty when piped via curl|bash).

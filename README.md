@@ -14,7 +14,7 @@ image, so you can verify the layer without a consumer repo. One command gets you
 a shell, no clone needed:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/run.sh | bash
+curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.0/run.sh | bash
 ```
 
 `run.sh` dispatches on the host OS:
@@ -38,7 +38,7 @@ To set up the macOS runtime and pull the image ahead of time, use `install.sh`
 (macOS-only, idempotent, also curl-able):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.0/install.sh | bash
 ./install.sh --no-pull  # from a clone: runtime only, skip the image pull
 ```
 
