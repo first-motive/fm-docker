@@ -16,27 +16,24 @@
 set -euo pipefail
 
 IMAGE="ghcr.io/first-motive/fm-docker:humble"
+# fm-docker serves its own helper scripts; lib.sh is owned by fm-tools and
+# fetched from a pinned release tag (the single reuse home).
 RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/main"
+FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.2.0"
 
 # Resolve the script's own dir (empty when piped via curl|bash).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
 
-# Load the shared host checks: from the clone if present, else fetch them —
-# install.sh is itself curl|bash-able, so the library may not be on disk. The
-# checks must run in this shell, so source rather than execute.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/scripts/lib.sh" ]; then
-  # shellcheck source=scripts/lib.sh
-  source "$SCRIPT_DIR/scripts/lib.sh"
-else
-  # eval, not source <(...): process substitution needs /dev/fd, which does not
-  # resolve when bash reads this script from a stdin pipe (curl | bash), leaving
-  # the lib functions undefined. eval "$(...)" captures into a string instead.
-  # Capture and validate first: eval of an empty/failed fetch is a silent no-op
-  # that surfaces later as a confusing "detect_os: command not found".
-  lib="$(curl -fsSL "$RAW_BASE/scripts/lib.sh")" || { echo "ERROR: failed to fetch lib.sh" >&2; exit 1; }
-  [ -n "$lib" ] || { echo "ERROR: empty lib.sh download" >&2; exit 1; }
-  eval "$lib"
-fi
+# Load the shared bootstrap library from fm-tools. fm-docker no longer vendors
+# lib.sh — it lives in fm-tools and is fetched from a pinned tag. The functions
+# must run in this shell, so eval the captured fetch — not source <(...), which
+# needs /dev/fd, absent when bash reads this script from a curl|bash pipe.
+# Capture and validate first: eval of an empty/failed fetch is a silent no-op
+# that surfaces later as a confusing "fm_detect_os: command not found".
+lib="$(curl -fsSL --proto '=https' --proto-redir '=https' "$FM_TOOLS_RAW/lib.sh")" \
+  || { echo "ERROR: failed to fetch lib.sh from fm-tools" >&2; exit 1; }
+[ -n "$lib" ] || { echo "ERROR: empty lib.sh download" >&2; exit 1; }
+eval "$lib"
 
 PULL=1
 for arg in "$@"; do
@@ -46,7 +43,7 @@ for arg in "$@"; do
   esac
 done
 
-OS=$(detect_os) || exit 1
+OS=$(fm_detect_os) || exit 1
 
 # CI self-test hook: deps loaded and OS resolved — stop before any host changes.
 # Lets the macOS curl-path test exercise the piped fetch without installing.
@@ -76,7 +73,7 @@ install_macos() {
 }
 
 pull_image() {
-  if ! has_docker; then
+  if ! fm_has_docker; then
     echo "WARN: docker unavailable — skipping image pull" >&2
     return 0
   fi

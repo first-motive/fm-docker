@@ -21,7 +21,10 @@ set -euo pipefail
 
 IMAGE="ghcr.io/first-motive/fm-docker:humble"
 ROS_SETUP="/opt/ros/humble/setup.bash"
+# fm-docker serves its own compose files + helper scripts; lib.sh is owned by
+# fm-tools and fetched from a pinned release tag (the single reuse home).
 RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/main"
+FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.2.0"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/fm-docker"
 
 # Keep the caller's directory: it is the workspace for the bare-metal shell and
@@ -32,27 +35,22 @@ INVOKE_DIR="$PWD"
 # repo files next to the script (REPO_DIR set); a piped run does not (REPO_DIR
 # empty), so deps are fetched from RAW_BASE instead.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/scripts/lib.sh" ]; then
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/compose.yaml" ]; then
   REPO_DIR="$SCRIPT_DIR"
 else
   REPO_DIR=""
 fi
 
-# Load the shared host checks: from the clone if present, else fetch them. The
-# checks must run in this shell, so source rather than execute.
-if [ -n "$REPO_DIR" ]; then
-  # shellcheck source=scripts/lib.sh
-  source "$REPO_DIR/scripts/lib.sh"
-else
-  # eval, not source <(...): process substitution needs /dev/fd, which does not
-  # resolve when bash reads this script from a stdin pipe (curl | bash), leaving
-  # the lib functions undefined. eval "$(...)" captures into a string instead.
-  # Capture and validate first: eval of an empty/failed fetch is a silent no-op
-  # that surfaces later as a confusing "detect_os: command not found".
-  lib="$(curl -fsSL "$RAW_BASE/scripts/lib.sh")" || { echo "ERROR: failed to fetch lib.sh" >&2; exit 1; }
-  [ -n "$lib" ] || { echo "ERROR: empty lib.sh download" >&2; exit 1; }
-  eval "$lib"
-fi
+# Load the shared bootstrap library from fm-tools. fm-docker no longer vendors
+# lib.sh — it lives in fm-tools and is fetched from a pinned tag. The functions
+# must run in this shell, so eval the captured fetch — not source <(...), which
+# needs /dev/fd, absent when bash reads this script from a curl|bash pipe.
+# Capture and validate first: eval of an empty/failed fetch is a silent no-op
+# that surfaces later as a confusing "fm_detect_os: command not found".
+lib="$(curl -fsSL --proto '=https' --proto-redir '=https' "$FM_TOOLS_RAW/lib.sh")" \
+  || { echo "ERROR: failed to fetch lib.sh from fm-tools" >&2; exit 1; }
+[ -n "$lib" ] || { echo "ERROR: empty lib.sh download" >&2; exit 1; }
+eval "$lib"
 
 OS=""
 BUILD=0
@@ -68,7 +66,7 @@ for arg in "$@"; do
 done
 
 if [ -z "$OS" ]; then
-  OS=$(detect_os) || exit 1
+  OS=$(fm_detect_os) || exit 1
 fi
 
 # CI self-test hook: deps loaded and OS resolved — stop before any runtime work.
@@ -110,14 +108,14 @@ if [ "$BUILD" -eq 1 ] && [ -z "$REPO_DIR" ]; then
 fi
 
 # Bring up a runtime if none is present: install + start OrbStack via install.sh.
-if ! has_docker; then
+if ! fm_has_docker; then
   echo "No container runtime found — setting up OrbStack ..."
   if [ -n "$REPO_DIR" ]; then
     bash "$REPO_DIR/install.sh" --no-pull
   else
     curl -fsSL "$RAW_BASE/install.sh" | bash -s -- --no-pull
   fi
-  has_docker || { echo "ERROR: container runtime still unavailable after setup." >&2; exit 1; }
+  fm_has_docker || { echo "ERROR: container runtime still unavailable after setup." >&2; exit 1; }
 fi
 
 # Locate the compose files: the clone has them; otherwise cache them locally,
