@@ -16,9 +16,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Workspace tooling + the minimal viz/description runtime.
 #   colcon / vcstool / rosdep / pip  — build the workspace, pull deps
 #   build-essential / cmake / git    — compile message + C++ packages
-#   python3-trimesh / pycollada      — OpenArm visual mesh conversion (.dae -> .stl)
-#                                      in fm_description; trimesh ignores the mixed
-#                                      COLLADA up_axis and exports raw geometry
+#   trimesh + pycollada (pip)        — OpenArm visual mesh conversion (.dae -> .stl)
+#                                      in fm_description; installed below via pip
+#                                      (not in the ROS base apt sources)
 #   rosidl-generator-dds-idl         — the vendored Unitree message packages call
 #                                      rosidl_generate_dds_interfaces but omit the
 #                                      dep, so rosdep cannot supply it; carry it
@@ -35,14 +35,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       cmake \
       git \
-      python3-trimesh \
-      python3-pycollada \
       ros-humble-foxglove-bridge \
       ros-humble-robot-state-publisher \
       ros-humble-joint-state-publisher \
       ros-humble-xacro \
       ros-humble-rosidl-generator-dds-idl \
     && rm -rf /var/lib/apt/lists/*
+
+# trimesh + pycollada power fm_description's OpenArm .dae -> .stl conversion
+# (trimesh ignores the mixed COLLADA up_axis and exports raw geometry). Neither is
+# in the ROS base apt sources (Ubuntu universe), so install from PyPI. trimesh is
+# pinned to 4.x: the raw-geometry export the converter relies on is 4.x behaviour.
+RUN pip3 install --no-cache-dir "trimesh>=4,<5" pycollada
 
 WORKDIR /ws
 
