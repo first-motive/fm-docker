@@ -6,8 +6,10 @@ name: ci
 # image change only); this never pushes.
 on:
   pull_request:
+    paths-ignore: ["**.md", "docs/**", "LICENSE", ".gitignore", "plans/**"]
   push:
     branches: [main]
+    paths-ignore: ["**.md", "docs/**", "LICENSE", ".gitignore", "plans/**"]
 
 permissions:
   contents: read
