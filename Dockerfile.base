@@ -16,7 +16,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Workspace tooling + the minimal viz/description runtime.
 #   colcon / vcstool / rosdep / pip  — build the workspace, pull deps
 #   build-essential / cmake / git    — compile message + C++ packages
-#   assimp-utils                     — mesh conversion for description meshes
+#   python3-trimesh / pycollada      — OpenArm visual mesh conversion (.dae -> .stl)
+#                                      in fm_description; trimesh ignores the mixed
+#                                      COLLADA up_axis and exports raw geometry
 #   rosidl-generator-dds-idl         — the vendored Unitree message packages call
 #                                      rosidl_generate_dds_interfaces but omit the
 #                                      dep, so rosdep cannot supply it; carry it
@@ -33,7 +35,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       cmake \
       git \
-      assimp-utils \
+      python3-trimesh \
+      python3-pycollada \
       ros-humble-foxglove-bridge \
       ros-humble-robot-state-publisher \
       ros-humble-joint-state-publisher \
