@@ -1,6 +1,6 @@
 # fm-docker
 
-Shared container base for First Motive's ROS2 (Humble) robot stack.
+Shared container base for First Motive's ROS2 robot stack.
 
 It holds the base image, the entrypoint, and the host compose overlays. As the
 root of the image inheritance chain, each downstream image is `FROM` its parent

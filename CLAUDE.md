@@ -5,7 +5,7 @@ Guidance for Claude Code and Codex working in the `fm-docker` repo. See the
 
 ## Purpose
 
-`fm-docker` is the shared container base for First Motive's ROS2 (Humble) stack:
+`fm-docker` is the shared container base for First Motive's ROS2 stack:
 the base image, the entrypoint, and the host compose overlays. It is the root of
 the image inheritance chain — every package repo's image is `FROM` a layer that
 traces back here. Part of First Motive's ROS2 stack, consumed by
