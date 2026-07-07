@@ -56,3 +56,8 @@ Pick the narrowest prefix that fits. If a change spans two, split the commit.
 
 - **Repo** — kebab-case (`fm-docker`), matching the GitHub repo and the
   `first-motive` org.
+
+## Onboarding
+
+New here? The [First Motive org profile](https://github.com/first-motive#get-started)
+has the one-curl setup and the `fm update` sync habit.
