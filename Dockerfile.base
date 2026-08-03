@@ -27,6 +27,16 @@ ARG DEBIAN_FRONTEND=noninteractive
 #   robot-state-publisher /          — publish TF from the URDF so any robot can
 #     joint-state-publisher            be viewed without a controller running
 #   xacro                            — expand the URDF/xacro descriptions
+#   rmw-cyclonedds-cpp               — the alternate RMW the zenoh comms profile
+#                                      selects (RMW_IMPLEMENTATION). Middleware, not
+#                                      a downstream layer's dep: any image on the
+#                                      chain can be launched on that profile, so
+#                                      putting it here beats repeating it in each
+#                                      child Dockerfile or publishing a parallel
+#                                      zenoh variant of every image. Installing it
+#                                      changes nothing by itself — FastDDS stays the
+#                                      default until RMW_IMPLEMENTATION says
+#                                      otherwise.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       python3-colcon-common-extensions \
       python3-vcstool \
@@ -40,6 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ros-humble-joint-state-publisher \
       ros-humble-xacro \
       ros-humble-rosidl-generator-dds-idl \
+      ros-humble-rmw-cyclonedds-cpp \
     && rm -rf /var/lib/apt/lists/*
 
 # trimesh + pycollada power fm_description's OpenArm .dae -> .stl conversion
