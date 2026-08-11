@@ -23,10 +23,14 @@ traces back here. Part of First Motive's ROS2 stack, consumed by
   xacro, robot/joint state publishers. Control, sim, MoveIt, and the TUI live in
   downstream repos' images, each `FROM` its parent. Do not add a downstream
   layer's deps here — that would re-monolith the base.
-- `compose.yaml` is generic: it runs `${FM_IMAGE}` and mounts `${FM_WS}`. The
-  `compose.macos.yaml` overlay carries only host-specific bits (platform, ports).
-  Containers are macOS-only — Linux runs ROS2 Humble natively, so there is no
-  Linux overlay here. Keep per-repo specifics in the consumer repo, not here.
+- `compose.yaml` is generic: it runs `${FM_IMAGE}` and mounts `${FM_WS}`. An
+  overlay carries only host-specific bits and never per-repo specifics, which
+  belong in the consumer repo:
+  - `compose.macos.yaml` — platform and published ports. No GPU, no hardware.
+  - `compose.linux.yaml` — GPU reservation, host networking and IPC, `/dev`
+    passthrough, X11.
+- `run.sh` still takes the native path on Linux. The Linux overlay is for a
+  consumer repo's own `run.sh`, which is where the GPU container path lives.
 
 ## Publishing
 

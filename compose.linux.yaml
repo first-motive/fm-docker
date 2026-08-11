@@ -1,0 +1,69 @@
+# Linux overlay — an x86_64 or aarch64 host with real hardware attached.
+#
+#   docker compose -f compose.yaml -f compose.linux.yaml up
+#
+# What this overlay adds over the base, and why:
+#
+#   GPU        reserved through the NVIDIA container toolkit, so training,
+#              annotation, and rendering reach the card. Compose v2 syntax —
+#              the distro's v1 `docker-compose` cannot parse it.
+#   host net   DDS discovery is multicast and peers live on the LAN. A bridge
+#              network drops discovery traffic and the symptom is a topic list
+#              that is silently short, not an error. `ports:` is therefore
+#              absent here: with host networking, 8765 is already the host's.
+#   host IPC   CycloneDDS uses shared memory between processes on one machine;
+#              a private IPC namespace forces every message onto the network.
+#   /dev       cameras, USB serial bridges, and lidar are physical devices on
+#              this host. macOS has none of this, which is why it lives here.
+#   X11        rviz and Gazebo render to the host display.
+#
+# A machine that has no GPU cannot start this overlay: the reservation is a
+# requirement, not a preference. Drop `deploy:` for a CPU-only Linux host.
+services:
+  fm:
+    network_mode: host
+    ipc: host
+
+    # 128 MB matches the net.core.rmem_max that fm-setup's dds-tuning step sets
+    # on the host. CycloneDDS asks for that much and treats a shortfall as fatal.
+    shm_size: "128mb"
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility, graphics]
+
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
+      # `all` rather than a device list: the driver capabilities decide what the
+      # container may use, and graphics is needed for rviz and Gazebo.
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - DISPLAY=${DISPLAY:-:0}
+      # Qt's MIT-SHM path assumes the X server shares the process namespace.
+      - QT_X11_NO_MITSHM=1
+
+    volumes:
+      # The whole tree, not a device list: sensors enumerate at plug time, and a
+      # container started before a camera was connected would otherwise never
+      # see it.
+      - /dev:/dev
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # X authority, when the session uses one. Empty on a headless host, which
+      # is harmless.
+      - ${XAUTHORITY:-/dev/null}:/tmp/.Xauthority:ro
+
+    # Device access without --privileged. The major numbers are the kernel's:
+    #   81  video4linux — cameras
+    #   166 USB ACM — serial-over-USB devices
+    #   180 USB — raw USB, which librealsense uses
+    #   188 USB serial — the CH340 bridges on the tactile gloves
+    device_cgroup_rules:
+      - "c 81:* rmw"
+      - "c 166:* rmw"
+      - "c 180:* rmw"
+      - "c 188:* rmw"
