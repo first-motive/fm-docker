@@ -21,8 +21,10 @@ curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.0/run.s
 
 - **macOS** → container. OrbStack is installed and started automatically when
   missing; the `:humble` image pulls on first run, then is reused offline.
-- **Linux** → native ROS2 at `/opt/ros/humble`. There is no container path on
-  Linux; without a native Humble install, `run.sh` exits with guidance.
+- **Linux** → native ROS2 at `/opt/ros/humble`. `run.sh` takes the native path
+  and exits with guidance when Humble is absent. The container path exists on
+  Linux too, through `compose.linux.yaml`, but it is driven by a consumer repo's
+  own `run.sh` rather than by this one.
 
 Piped via curl, `run.sh` caches `lib.sh` and the compose files under
 `~/.cache/fm-docker` and reuses them offline. From a clone, the same dispatch
@@ -67,6 +69,7 @@ ghcr.io/first-motive/fm-docker:humble
 | `ros_entrypoint.sh`   | Sources the ROS distro, then the workspace overlay if built.  |
 | `compose.yaml`        | Shared compose base. Consumers set `FM_IMAGE` + `FM_WS`.      |
 | `compose.macos.yaml`  | macOS (Apple silicon, OrbStack) overlay — dev/build/sim/dataset; no GPU. |
+| `compose.linux.yaml`  | Linux overlay — NVIDIA GPU, host networking and IPC, `/dev` passthrough, X11. |
 | `install.sh`          | macOS host setup: install OrbStack + pull base image. Curl-able. |
 | `run.sh`              | Drop into a shell — macOS container or Linux native. Curl-able. |
 | `scripts/lib.sh`      | Sourced host checks (OS, docker) — no actions.                |
@@ -83,7 +86,16 @@ overlay adds the host-specific bits:
 # macOS
 FM_IMAGE=ghcr.io/first-motive/fm-robot:humble \
   docker compose -f compose.yaml -f compose.macos.yaml up
+
+# Linux, with a GPU and hardware attached
+FM_IMAGE=ghcr.io/first-motive/fm-robot:humble \
+  docker compose -f compose.yaml -f compose.linux.yaml up
 ```
+
+The Linux overlay reserves the GPU through the NVIDIA container toolkit, so the
+host needs it installed — `fm-setup`'s `nvidia-container` step does that. Verify
+with `docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi`
+before blaming the stack.
 
 `FM_IMAGE` (required) selects the layered image to run. `FM_WS` is the host
 workspace mounted at `/ws`, defaulting to the directory you run compose from.
