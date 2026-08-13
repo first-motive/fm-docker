@@ -2,7 +2,7 @@
 # Drop into a ROS2 Humble shell for the fm-docker base.
 #
 # Curl-able (no clone needed):
-#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.0/run.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1/run.sh | bash
 #
 # From a clone:
 #   ./run.sh [--macos|--linux] [--pull|--build] [-h|--help]
@@ -24,7 +24,7 @@ IMAGE="ghcr.io/first-motive/fm-docker:humble"
 ROS_SETUP="/opt/ros/humble/setup.bash"
 # fm-docker serves its own compose files + helper scripts; lib.sh is owned by
 # fm-tools and fetched from a pinned release tag (the single reuse home).
-RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.0"
+RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1"
 FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.2.0"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/fm-docker"
 
