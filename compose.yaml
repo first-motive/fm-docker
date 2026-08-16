@@ -5,16 +5,24 @@
 #
 # This base is generic — it runs a published layered image and mounts a host
 # workspace. The consuming repo's run.sh exports two env vars:
-#   FM_IMAGE   image to run    (e.g. ghcr.io/first-motive/fm-robot:humble)
+#   FM_IMAGE   image to run    (e.g. ghcr.io/first-motive/fm-robot@sha256:...)
 #              default: the fm-docker base, so `up` works with no env set
 #   FM_WS      host workspace mounted at /ws   (default: current dir)
+#
+# Set FM_IMAGE to a digest or to a vX.Y.Z tag, never to :humble. Both of those
+# name one image forever; :humble moves to the newest build of main, so a host
+# that pulls it tomorrow gets something it was never tested against.
 #
 # The overlays carry only host-specific bits (platform, ports, GPU, devices,
 # X11) — never per-repo specifics. Foxglove bridge listens on 8765; the overlay
 # decides whether the port is published to the host.
 services:
   fm:
-    image: ${FM_IMAGE:-ghcr.io/first-motive/fm-docker:humble}
+    # Pinned by digest for the same reason: a rebuild of :humble would otherwise
+    # change what every already-provisioned host runs, retroactively. This line
+    # moves by hand, with the release that published the new image — the bump
+    # flow is in the README.
+    image: ${FM_IMAGE:-ghcr.io/first-motive/fm-docker@sha256:68afd2d27c590ffe63809f7a088eb791eed6ba74b280e4e260a9795a66981766}
     volumes:
       - ${FM_WS:-.}:/ws:cached
     working_dir: /ws

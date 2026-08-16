@@ -36,4 +36,11 @@ traces back here. Part of First Motive's ROS2 stack, consumed by
 
 `Dockerfile.base` is built multi-arch (arm64 + amd64) and pushed to
 `ghcr.io/first-motive/fm-docker:humble` by `.github/workflows/publish.yml` on
-every push to `main` that touches the image.
+every push to `main` that touches the image. A published release additionally
+pushes `:vX.Y.Z`, taken from the release's git tag.
+
+`:humble` moves; a version tag and a digest do not. Downstream `Dockerfile`s
+build `FROM :humble`, but anything that provisions a host holds the digest —
+`compose.yaml` and `install.sh` both pin it, and they move together. Never
+change one of those two lines alone, and never point either back at `:humble`.
+The release and bump flow is in the [README](README.md#releasing).

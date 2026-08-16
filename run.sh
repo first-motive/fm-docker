@@ -20,12 +20,15 @@
 # and called on the last line, so a truncated curl|bash never half-runs.
 set -euo pipefail
 
-IMAGE="ghcr.io/first-motive/fm-docker:humble"
+# Local-only tag for --build. The published image is pinned by digest in
+# compose.yaml, and a digest cannot name a build that has not been pushed, so a
+# local build gets its own tag and --build points FM_IMAGE at it.
+LOCAL_IMAGE="fm-docker:local"
 ROS_SETUP="/opt/ros/humble/setup.bash"
 # fm-docker serves its own compose files + helper scripts; lib.sh is owned by
 # fm-tools and fetched from a pinned release tag (the single reuse home).
 RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1"
-FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.2.0"
+FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.4.1"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/fm-docker"
 
 # Keep the caller's directory: it is the workspace for the bare-metal shell and
@@ -117,8 +120,11 @@ run_macos() {
   export FM_WS="${FM_WS:-$INVOKE_DIR}"   # mount the caller's dir at /ws
 
   if [ "$build" -eq 1 ]; then
-    echo "Building Dockerfile.base locally as $IMAGE ..."
-    docker build -f "$REPO_DIR/Dockerfile.base" -t "$IMAGE" "$REPO_DIR"
+    echo "Building Dockerfile.base locally as $LOCAL_IMAGE ..."
+    docker build -f "$REPO_DIR/Dockerfile.base" -t "$LOCAL_IMAGE" "$REPO_DIR"
+    # Override the digest compose pins by default, or compose would run the
+    # published image and the local build would sit there unused.
+    export FM_IMAGE="$LOCAL_IMAGE"
     pull_mode="never"   # use the freshly built image, never pull over it
   fi
 
