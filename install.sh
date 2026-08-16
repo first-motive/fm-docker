@@ -22,11 +22,15 @@
 # curl|bash leaves an incomplete function that never runs.
 set -euo pipefail
 
-IMAGE="ghcr.io/first-motive/fm-docker:humble"
+# The image this installer pre-pulls, pinned by digest so it is the same one
+# compose.yaml runs. Pulling :humble instead would seed the host with whatever
+# main built last, which compose would then pull over on the first run. Keep
+# this digest equal to the one in compose.yaml — the README has the bump flow.
+IMAGE="ghcr.io/first-motive/fm-docker@sha256:68afd2d27c590ffe63809f7a088eb791eed6ba74b280e4e260a9795a66981766"
 # fm-docker serves its own helper scripts; lib.sh is owned by fm-tools and
 # fetched from a pinned release tag (the single reuse home).
 RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1"
-FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.2.0"
+FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.4.1"
 
 # Resolve the script's own dir (empty when piped via curl|bash).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""

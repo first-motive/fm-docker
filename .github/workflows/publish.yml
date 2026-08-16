@@ -1,8 +1,13 @@
 name: publish
 
 # Build the base image multi-arch (arm64 + amd64) and push it to GHCR. Runs on
-# every push to main that touches the image, and on demand. Downstream repos
-# pull ghcr.io/first-motive/fm-docker:humble as their FROM base.
+# every push to main that touches the image, on every published release, and on
+# demand. Downstream repos build FROM ghcr.io/first-motive/fm-docker:humble;
+# provisioned hosts run the digest that compose.yaml pins.
+#
+# The release trigger is the one that gives consumers something to hold on to.
+# :humble moves with main, so it names a different image after every rebuild,
+# while the vX.Y.Z tag a release publishes never moves again.
 on:
   push:
     branches: [main]
@@ -10,6 +15,8 @@ on:
       - Dockerfile.base
       - ros_entrypoint.sh
       - .github/workflows/publish.yml
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -18,7 +25,7 @@ permissions:
 
 jobs:
   publish:
-    name: build + push (humble, arm64 + amd64)
+    name: build + push (arm64 + amd64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -36,13 +43,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The version comes from the git tag the release was cut from, so a bump
+      # happens in one place — the tag — and never in this file.
+      - name: Resolve tags
+        id: tags
+        run: |
+          image="ghcr.io/first-motive/fm-docker"
+          tags="$image:humble"
+          case "$GITHUB_REF" in
+            refs/tags/v*) tags="$tags,$image:${GITHUB_REF#refs/tags/}" ;;
+          esac
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          echo "publishing: $tags"
+
       - name: Build + push
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.base
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/first-motive/fm-docker:humble
+          tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # The digest is what compose.yaml pins, and it is only knowable after the
+      # push. Putting it in the job summary saves a registry query when the
+      # release notes and the compose pin are written.
+      - name: Report the digest
+        run: |
+          {
+            echo "### Published"
+            echo ""
+            echo "tags: \`${{ steps.tags.outputs.tags }}\`"
+            echo ""
+            echo "digest: \`${{ steps.build.outputs.digest }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

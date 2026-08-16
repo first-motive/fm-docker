@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1/run.s
 `run.sh` dispatches on the host OS:
 
 - **macOS** → container. OrbStack is installed and started automatically when
-  missing; the `:humble` image pulls on first run, then is reused offline.
+  missing; the pinned base image pulls on first run, then is reused offline.
 - **Linux** → native ROS2 at `/opt/ros/humble`. `run.sh` takes the native path
   and exits with guidance when Humble is absent. The container path exists on
   Linux too, through `compose.linux.yaml`, but it is driven by a consumer repo's
@@ -58,8 +58,30 @@ The base image is published to GHCR multi-arch (arm64 + amd64), so one tag runs
 on Apple silicon (OrbStack) and Linux:
 
 ```
-ghcr.io/first-motive/fm-docker:humble
+ghcr.io/first-motive/fm-docker:humble                  # moves with main
+ghcr.io/first-motive/fm-docker:v0.1.1                  # a release, never moves
+ghcr.io/first-motive/fm-docker@sha256:<digest>         # one exact image
 ```
+
+`:humble` is the tag a downstream `Dockerfile` builds `FROM` — a layer wants the
+newest base it can rebuild against. Anything that provisions a host uses the
+digest or a version tag instead, which is why `compose.yaml` pins the digest.
+Left on `:humble`, a rebuild would change what every provisioned host runs the
+next time it pulled, retroactively and with no commit to point at.
+
+## Releasing
+
+A release publishes the image and is the only thing that mints a version tag:
+
+1. Tag the commit and publish the GitHub release: `vX.Y.Z`, matching the tag the
+   `run.sh` and `install.sh` curl lines already carry.
+2. `publish.yml` builds multi-arch and pushes `:humble` plus `:vX.Y.Z`. The job
+   summary prints the digest of that build.
+3. Paste the digest into the `image:` line of `compose.yaml` and the `IMAGE`
+   line of `install.sh`, which move together, and commit.
+
+Step 3 is deliberately manual. The digest is what provisioned hosts follow, so
+moving it is a decision someone makes and reviews, not a side effect of a build.
 
 ## Contents
 
@@ -83,11 +105,11 @@ overlay adds the host-specific bits:
 
 ```bash
 # macOS
-FM_IMAGE=ghcr.io/first-motive/fm-robot:humble \
+FM_IMAGE=ghcr.io/first-motive/fm-robot:v0.1.1 \
   docker compose -f compose.yaml -f compose.macos.yaml up
 
 # Linux, with a GPU and hardware attached
-FM_IMAGE=ghcr.io/first-motive/fm-robot:humble \
+FM_IMAGE=ghcr.io/first-motive/fm-robot:v0.1.1 \
   docker compose -f compose.yaml -f compose.linux.yaml up
 ```
 
@@ -96,16 +118,18 @@ host needs it installed — `fm-setup`'s `nvidia-container` step does that. Veri
 with `docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi`
 before blaming the stack.
 
-`FM_IMAGE` (required) selects the layered image to run. `FM_WS` is the host
-workspace mounted at `/ws`, defaulting to the directory you run compose from.
+`FM_IMAGE` (required) selects the layered image to run — give it a version tag
+or a digest, never `:humble`. `FM_WS` is the host workspace mounted at `/ws`,
+defaulting to the directory you run compose from.
 
 ## CI
 
 - `ci.yml` — every PR and push to `main`: shellcheck on host scripts, an amd64
   build of `Dockerfile.base` (no push), and a smoke test for the ROS runtime and
   description/viz packages.
-- `publish.yml` — push to `main` that touches the image: multi-arch (arm64 +
-  amd64) build, push `:humble` to GHCR.
+- `publish.yml` — push to `main` that touches the image, or a published release:
+  multi-arch (arm64 + amd64) build, push `:humble` to GHCR, plus `:vX.Y.Z` when
+  the run came from a release tag.
 
 ## License
 
