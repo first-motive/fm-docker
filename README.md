@@ -14,7 +14,7 @@ image, so you can verify the layer without a consumer repo. One command gets you
 a shell, no clone needed:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1/run.sh | bash
+curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/run.sh | bash
 ```
 
 `run.sh` dispatches on the host OS:
@@ -40,7 +40,7 @@ To set up the macOS runtime and pull the image ahead of time, use `install.sh`
 (macOS-only, idempotent, also curl-able):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/install.sh | bash
 ./install.sh --no-pull  # from a clone: runtime only, skip the image pull
 ```
 
@@ -83,12 +83,21 @@ A release publishes the image and is the only thing that mints a version tag:
 Step 3 is deliberately manual. The digest is what provisioned hosts follow, so
 moving it is a decision someone makes and reviews, not a side effect of a build.
 
+The version tag itself has one tracked home: the `fm-docker-pin` block in the
+First Motive render plane, which every consumer repo renders into its own
+installer. Re-pin it there and let the sync PR land here. Inside this repo the
+tag stays a literal wherever a curl|bash reader has no clone to read it from —
+the README lines above, the usage comments, and `RAW_BASE`. CI's `tag refs` job
+runs `scripts/check-tag-refs.sh`, which fails when any of those disagrees with
+the rendered pin.
+
 ## Contents
 
 | File                  | Role                                                          |
 | --------------------- | ------------------------------------------------------------- |
 | `Dockerfile.base`     | Minimal ROS2 Humble base: build tooling, viz, xacro, rsp/jsp. |
 | `ros_entrypoint.sh`   | Sources the ROS distro, then the workspace overlay if built.  |
+| `scripts/check-tag-refs.sh` | Fails CI when a tag literal disagrees with the rendered pin. |
 | `compose.yaml`        | Shared compose base. Consumers set `FM_IMAGE` + `FM_WS`.      |
 | `compose.macos.yaml`  | macOS (Apple silicon, OrbStack) overlay — dev/build/sim/dataset; no GPU. |
 | `compose.linux.yaml`  | Linux overlay — NVIDIA GPU, host networking and IPC, `/dev` passthrough, X11. |

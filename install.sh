@@ -7,10 +7,10 @@
 # container runtime to install.
 #
 # Curl-able (no clone needed):
-#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/install.sh | bash
 #
 # Inspect before running (always offer this path):
-#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1/install.sh -o install.sh
+#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/install.sh -o install.sh
 #   less install.sh && bash install.sh
 #
 # From a clone:
@@ -27,10 +27,22 @@ set -euo pipefail
 # main built last, which compose would then pull over on the first run. Keep
 # this digest equal to the one in compose.yaml — the README has the bump flow.
 IMAGE="ghcr.io/first-motive/fm-docker@sha256:68afd2d27c590ffe63809f7a088eb791eed6ba74b280e4e260a9795a66981766"
-# fm-docker serves its own helper scripts; lib.sh is owned by fm-tools and
-# fetched from a pinned release tag (the single reuse home).
-RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1"
+# fm-docker serves its own helper scripts from its own release tag. That tag is
+# a literal here because a curl|bash run has no clone to read it from;
+# scripts/check-tag-refs.sh holds every such literal to the rendered pin.
+RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3"
+# fm-render:begin fm-tools-pin sha256:5de9c0a921c441407f1aea8b6e32f37ca9d3f654d1116c636f0a7136da03b7d2 — rendered by the First Motive render plane — edit the upstream source, not this file
+# fm-tools owns both shared bootstrap pieces: lib.sh (fetched raw, before any
+# clone exists) and the fm_tools wheel (the shared TUI banner). Both come from
+# one pinned release tag — the single reuse home. Re-pin in the render plane,
+# never in a consumer. A host that needs only one of the two still carries both,
+# so the pin reads the same everywhere it appears; the disables below declare
+# that, rather than splitting the pin into two blocks that can disagree.
+# shellcheck disable=SC2034
 FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.4.1"
+# shellcheck disable=SC2034
+FM_TOOLS="fm-tools @ git+https://github.com/first-motive/fm-tools@v0.4.1"
+# fm-render:end fm-tools-pin
 
 # Resolve the script's own dir (empty when piped via curl|bash).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""

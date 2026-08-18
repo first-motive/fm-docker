@@ -2,7 +2,7 @@
 # Drop into a ROS2 Humble shell for the fm-docker base.
 #
 # Curl-able (no clone needed):
-#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1/run.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/run.sh | bash
 #
 # From a clone:
 #   ./run.sh [--macos|--linux] [--pull|--build] [-h|--help]
@@ -25,10 +25,22 @@ set -euo pipefail
 # local build gets its own tag and --build points FM_IMAGE at it.
 LOCAL_IMAGE="fm-docker:local"
 ROS_SETUP="/opt/ros/humble/setup.bash"
-# fm-docker serves its own compose files + helper scripts; lib.sh is owned by
-# fm-tools and fetched from a pinned release tag (the single reuse home).
-RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.1"
+# fm-docker serves its own compose files and helper scripts from its own release
+# tag. That tag is a literal here because a curl|bash run has no clone to read it
+# from; scripts/check-tag-refs.sh holds every such literal to the rendered pin.
+RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3"
+# fm-render:begin fm-tools-pin sha256:5de9c0a921c441407f1aea8b6e32f37ca9d3f654d1116c636f0a7136da03b7d2 — rendered by the First Motive render plane — edit the upstream source, not this file
+# fm-tools owns both shared bootstrap pieces: lib.sh (fetched raw, before any
+# clone exists) and the fm_tools wheel (the shared TUI banner). Both come from
+# one pinned release tag — the single reuse home. Re-pin in the render plane,
+# never in a consumer. A host that needs only one of the two still carries both,
+# so the pin reads the same everywhere it appears; the disables below declare
+# that, rather than splitting the pin into two blocks that can disagree.
+# shellcheck disable=SC2034
 FM_TOOLS_RAW="https://raw.githubusercontent.com/first-motive/fm-tools/v0.4.1"
+# shellcheck disable=SC2034
+FM_TOOLS="fm-tools @ git+https://github.com/first-motive/fm-tools@v0.4.1"
+# fm-render:end fm-tools-pin
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/fm-docker"
 
 # Keep the caller's directory: it is the workspace for the bare-metal shell and
