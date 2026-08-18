@@ -36,6 +36,16 @@ jobs:
       - name: Run shellcheck
         run: shellcheck scripts/*.sh run.sh install.sh
 
+  # The release tag appears as a literal wherever a curl|bash reader has no clone
+  # to read it from. One pinned value is rendered into scripts/check-tag-refs.sh;
+  # this fails the PR when any other literal disagrees with it.
+  tag-refs:
+    name: tag refs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./scripts/check-tag-refs.sh
+
   # Piping a script into bash makes bash read it from stdin, which breaks process
   # substitution (no /dev/fd) — the regression that printed "detect_os: command not
   # found". Only a real macOS runner reproduces it; shellcheck cannot. The org
