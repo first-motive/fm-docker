@@ -46,13 +46,10 @@ curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/insta
 
 ## Image Inheritance
 
-```
-fm-docker base       ros:humble + tooling + viz + xacro/rsp        (view any robot)
-   └ fm-robot   FROM base    + ros2-control                        (description + control + sensors)
-        ├ fm-sim     FROM robot  + mujoco/gz/xvfb
-        └ fm-teleop  FROM robot  + moveit/servo
-   └ fm-app     FROM robot  + sim & teleop apt deps + textual      (full-stack launcher)
-```
+![image inheritance](docs/diagrams/images.svg)
+
+Source: [`docs/diagrams/images.d2`](docs/diagrams/images.d2) — re-render with
+[`docs/diagrams/render.sh`](docs/diagrams/render.sh).
 
 The base image is published to GHCR multi-arch (arm64 + amd64), so one tag runs
 on Apple silicon (OrbStack) and Linux:
