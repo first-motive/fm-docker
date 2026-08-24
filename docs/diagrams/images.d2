@@ -1,0 +1,16 @@
+# Image inheritance. Every layer is FROM the one above it, so a change to the
+# base rebuilds everything below — which is why the base is the only image this
+# repo publishes, and why the tag it publishes is pinned by digest downstream.
+...@styles
+direction: down
+
+base: "fm-docker base\nros:humble + tooling + viz + xacro/rsp" { class: node }
+robot: "fm-robot\nFROM base + ros2_control" { class: pkg }
+sim: "fm-sim\nFROM robot + mujoco / gz / xvfb" { class: art }
+teleop: "fm-teleop\nFROM robot + moveit / servo" { class: art }
+app: "fm-app\nFROM robot + sim & teleop deps + textual" { class: art }
+
+base -> robot
+robot -> sim
+robot -> teleop
+robot -> app
