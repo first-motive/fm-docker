@@ -6,5 +6,6 @@ services:
     platform: linux/arm64
     ports:
       - "8765:8765"   # foxglove_bridge -> macOS Foxglove Studio
-    environment:
-      - ROS_DOMAIN_ID=0
+    # No environment block: the transport and the domain come from compose.yaml.
+    # This overlay pinned ROS_DOMAIN_ID=0 literally, which ignored the host's own
+    # setting — a Mac on a shared LAN then joined a domain it had opted out of.

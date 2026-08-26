@@ -36,9 +36,9 @@ services:
               count: all
               capabilities: [gpu, compute, utility, graphics]
 
+    # Only the host-specific half. The transport lives in compose.yaml, so the
+    # two overlays cannot drift into different middleware defaults.
     environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
-      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
       # `all` rather than a device list: the driver capabilities decide what the
       # container may use, and graphics is needed for rviz and Gazebo.
       - NVIDIA_VISIBLE_DEVICES=all

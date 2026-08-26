@@ -28,6 +28,33 @@ services:
     working_dir: /ws
     expose:
       - "8765"
+
+    # The transport, in the shared base rather than in each overlay: a container
+    # that speaks different middleware than the host's zenoh bridge routes is a
+    # stack that starts, publishes, and is heard by nobody — and that failure must
+    # not depend on which overlay a host happened to pick.
+    #
+    # Every value is a passthrough with a default. The consuming repo's run.sh
+    # resolves the host's transport from its machine identity card and exports
+    # these; a bare `docker compose up` with nothing exported still gets the
+    # fleet's default.
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      # Cyclone, fleet-wide. Under the zenoh profile the DDS graph is
+      # loopback-only and small, which is where Cyclone fits, and
+      # zenoh-bridge-ros2dds is developed against it upstream. A host on the
+      # dds-lan escape hatch exports rmw_fastrtps_cpp and overrides this.
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
+      # Whether DDS may leave this container. Defaults to 0, and the consuming
+      # repo does NOT forward the host's value: on a host under the zenoh profile
+      # this is 1, meaning "the host's loopback, where the host's bridge is". The
+      # same value inside a container means the container's own loopback, which
+      # hides its graph from that bridge. A container that must reach the fabric
+      # runs its own bridge, host-networked (comms/deploy/compose.zenoh.yaml).
+      - ROS_LOCALHOST_ONLY=${ROS_LOCALHOST_ONLY:-0}
+      # Which profile resolved, for anything inside that wants to report it.
+      - FM_COMMS_PROFILE=${FM_COMMS_PROFILE:-zenoh}
+
     stdin_open: true
     tty: true
     command: bash
