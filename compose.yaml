@@ -9,6 +9,14 @@
 #              default: the fm-docker base, so `up` works with no env set
 #   FM_WS      host workspace mounted at /ws   (default: current dir)
 #
+# It also passes the host's transport through. Under the zenoh profile on a
+# host-networked overlay the consuming repo exports three more, which together put
+# the container in the same DDS island as the host's zenoh bridge:
+#   ROS_LOCALHOST_ONLY=1        DDS stays on `lo`, which host networking shares
+#   FM_CYCLONEDDS_XML           host path of the bridge's loopback Cyclone profile
+#   FM_CYCLONEDDS_URI           where the container reads it, as a file:// URI
+# All three default to inert, so a bare `docker compose up` is unchanged.
+#
 # Set FM_IMAGE to a digest or to a vX.Y.Z tag, never to :humble. Both of those
 # name one image forever; :humble moves to the newest build of main, so a host
 # that pulls it tomorrow gets something it was never tested against.
@@ -25,6 +33,12 @@ services:
     image: ${FM_IMAGE:-ghcr.io/first-motive/fm-docker@sha256:68afd2d27c590ffe63809f7a088eb791eed6ba74b280e4e260a9795a66981766}
     volumes:
       - ${FM_WS:-.}:/ws:cached
+      # The host's loopback DDS profile, when the consuming repo exports its path.
+      # Mounted at a fixed container path so CYCLONEDDS_URI below is the same string
+      # on every host. /dev/null is the inert default: no path exported, no config
+      # file, and CYCLONEDDS_URI stays empty, which Cyclone reads as "use the
+      # built-in defaults".
+      - ${FM_CYCLONEDDS_XML:-/dev/null}:/etc/fm-comms/cyclonedds.xml:ro
     working_dir: /ws
     expose:
       - "8765"
@@ -45,13 +59,33 @@ services:
       # zenoh-bridge-ros2dds is developed against it upstream. A host on the
       # dds-lan escape hatch exports rmw_fastrtps_cpp and overrides this.
       - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
-      # Whether DDS may leave this container. Defaults to 0, and the consuming
-      # repo does NOT forward the host's value: on a host under the zenoh profile
-      # this is 1, meaning "the host's loopback, where the host's bridge is". The
-      # same value inside a container means the container's own loopback, which
-      # hides its graph from that bridge. A container that must reach the fabric
-      # runs its own bridge, host-networked (comms/deploy/compose.zenoh.yaml).
+      # Whether DDS may leave this container. Defaults to 0; a consuming repo on
+      # the zenoh profile exports 1 when the container shares the host's network
+      # namespace (compose.linux.yaml's `network_mode: host`).
+      #
+      # That reverses the reasoning this file used to carry. The old comment said
+      # forwarding the host's 1 would confine the container to "its own loopback"
+      # and hide its graph from the host's bridge. Under host networking there is
+      # no own loopback: the container's `lo` IS the host's, so the setting puts
+      # the container's participants on exactly the interface the bridge is
+      # listening to. Leaving it at 0 does not widen discovery, it makes it a
+      # coin-flip — the bridge probes localhost by unicast while the container
+      # elects some other interface, and the two find each other only when a
+      # container participant happens to answer (fm-ros2#148: hours of working
+      # routes, then zero after a container recreation, no error anywhere).
+      #
+      # A container that does NOT share the host's network namespace — the macOS
+      # overlay — keeps 0, where the old reasoning still holds: there the bridge
+      # is a native process outside the VM. It reaches the fabric through its own
+      # host-networked bridge (comms/deploy/compose.zenoh.yaml).
       - ROS_LOCALHOST_ONLY=${ROS_LOCALHOST_ONLY:-0}
+      # The Cyclone config the container reads. ROS_LOCALHOST_ONLY selects `lo`
+      # but says nothing about how peers are found on it, and loopback has no
+      # multicast: without the unicast peer list and the raised participant
+      # ceiling that profile carries, a stack's tenth participant fails outright.
+      # Named as a container path, never as the host's — the file arrives through
+      # the mount above, and the host's own $HOME is not mounted.
+      - CYCLONEDDS_URI=${FM_CYCLONEDDS_URI:-}
       # Which profile resolved, for anything inside that wants to report it.
       - FM_COMMS_PROFILE=${FM_COMMS_PROFILE:-zenoh}
 

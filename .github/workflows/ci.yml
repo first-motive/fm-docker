@@ -59,6 +59,15 @@ jobs:
       - uses: actions/checkout@v7
       - run: ./scripts/check-tag-refs.sh
 
+  # The transport wiring fails silently when it is wrong — the stack starts and
+  # nobody hears it — so it is asserted rather than read.
+  transport:
+    name: compose transport
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./scripts/check-compose-transport.sh
+
   # Piping a script into bash makes bash read it from stdin, which breaks process
   # substitution (no /dev/fd) — the regression that printed "detect_os: command not
   # found". Only a real macOS runner reproduces it; shellcheck cannot. The org
