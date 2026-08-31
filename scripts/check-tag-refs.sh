@@ -14,11 +14,11 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-# fm-render:begin fm-docker-pin sha256:532190583135a4c86953f451232f5e222ebd1750e65438ea252618f0c3b44cd2 — rendered by the First Motive render plane — edit the upstream source, not this file
+# fm-render:begin fm-docker-pin sha256:089e572d5a5bd7e0e5ba61413595bc583a0d88e323505178dca098ef6daafaf5 — rendered by the First Motive render plane — edit the upstream source, not this file
 # The container runtime install is delegated to fm-docker, fetched from one
 # pinned release tag. Re-pin in the render plane, never in a consumer.
 # shellcheck disable=SC2034
-FM_DOCKER_RAW="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3"
+FM_DOCKER_RAW="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.4"
 # fm-render:end fm-docker-pin
 
 expected="${FM_DOCKER_RAW##*/}"

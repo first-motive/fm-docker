@@ -2,7 +2,7 @@
   "_fm_render": {
     "artifact": "render-lock",
     "origin": "rendered by the First Motive render plane \u2014 edit the upstream source, not this file",
-    "sha256": "66e5a5d5a27cf7ca3ef058ff477ba5a58f2c2e66f75e300d51b6acf6c920ff32"
+    "sha256": "21c0e6fd0d7e911ad45eff210f8c0557014eb6592d693aedc6a96a1b35f0a39c"
   },
   "artifacts": {
     "agents-invariants": {
@@ -42,7 +42,7 @@
       "paths": [
         "scripts/check-tag-refs.sh"
       ],
-      "sha256": "532190583135a4c86953f451232f5e222ebd1750e65438ea252618f0c3b44cd2",
+      "sha256": "089e572d5a5bd7e0e5ba61413595bc583a0d88e323505178dca098ef6daafaf5",
       "stamp": "sh"
     },
     "fm-tools-pin": {
