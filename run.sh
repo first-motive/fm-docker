@@ -2,7 +2,7 @@
 # Drop into a ROS2 Humble shell for the fm-docker base.
 #
 # Curl-able (no clone needed):
-#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.4/run.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/run.sh | bash
 #
 # From a clone:
 #   ./run.sh [--macos|--linux] [--pull|--build] [-h|--help]
@@ -28,7 +28,7 @@ ROS_SETUP="/opt/ros/humble/setup.bash"
 # fm-docker serves its own compose files and helper scripts from its own release
 # tag. That tag is a literal here because a curl|bash run has no clone to read it
 # from; scripts/check-tag-refs.sh holds every such literal to the rendered pin.
-RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.4"
+RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3"
 # fm-render:begin fm-tools-pin sha256:5de9c0a921c441407f1aea8b6e32f37ca9d3f654d1116c636f0a7136da03b7d2 — rendered by the First Motive render plane — edit the upstream source, not this file
 # fm-tools owns both shared bootstrap pieces: lib.sh (fetched raw, before any
 # clone exists) and the fm_tools wheel (the shared TUI banner). Both come from
