@@ -7,10 +7,10 @@
 # container runtime to install.
 #
 # Curl-able (no clone needed):
-#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.4/install.sh | bash
 #
 # Inspect before running (always offer this path):
-#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3/install.sh -o install.sh
+#   curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.4/install.sh -o install.sh
 #   less install.sh && bash install.sh
 #
 # From a clone:
@@ -30,7 +30,7 @@ IMAGE="ghcr.io/first-motive/fm-docker@sha256:68afd2d27c590ffe63809f7a088eb791eed
 # fm-docker serves its own helper scripts from its own release tag. That tag is
 # a literal here because a curl|bash run has no clone to read it from;
 # scripts/check-tag-refs.sh holds every such literal to the rendered pin.
-RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3"
+RAW_BASE="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.4"
 # fm-render:begin fm-tools-pin sha256:5de9c0a921c441407f1aea8b6e32f37ca9d3f654d1116c636f0a7136da03b7d2 — rendered by the First Motive render plane — edit the upstream source, not this file
 # fm-tools owns both shared bootstrap pieces: lib.sh (fetched raw, before any
 # clone exists) and the fm_tools wheel (the shared TUI banner). Both come from

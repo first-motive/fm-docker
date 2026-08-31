@@ -18,7 +18,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # The container runtime install is delegated to fm-docker, fetched from one
 # pinned release tag. Re-pin in the render plane, never in a consumer.
 # shellcheck disable=SC2034
-FM_DOCKER_RAW="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.3"
+FM_DOCKER_RAW="https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.4"
 # fm-render:end fm-docker-pin
 
 expected="${FM_DOCKER_RAW##*/}"
