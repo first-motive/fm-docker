@@ -1,13 +1,15 @@
 name: publish
 
-# Build the base image multi-arch (arm64 + amd64) and push it to GHCR. Runs on
+# Build each image multi-arch (arm64 + amd64) and push it to GHCR. Runs on
 # every push to main that touches the image, on every published release, and on
-# demand. Downstream repos build FROM ghcr.io/first-motive/fm-docker:humble;
+# demand. Downstream repos build FROM ghcr.io/first-motive/fm-docker:<tag>;
 # provisioned hosts run the digest that compose.yaml pins.
 #
 # The release trigger is the one that gives consumers something to hold on to.
-# :humble moves with main, so it names a different image after every rebuild,
-# while the vX.Y.Z tag a release publishes never moves again.
+# :humble, :jazzy and :jazzy-gpu move with main, so each names a different image
+# after every rebuild, while the version tag a release publishes never moves
+# again. Humble keeps the bare vX.Y.Z so existing pins keep their meaning; the
+# others carry their tag as a suffix (vX.Y.Z-jazzy).
 on:
   push:
     branches: [main]
@@ -25,8 +27,15 @@ permissions:
 
 jobs:
   publish:
-    name: build + push (arm64 + amd64)
+    name: build + push (arm64 + amd64, ${{ matrix.tag }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { distro: humble, target: base, tag: humble, version-suffix: "" }
+          - { distro: jazzy, target: base, tag: jazzy, version-suffix: -jazzy }
+          - { distro: jazzy, target: gpu, tag: jazzy-gpu, version-suffix: -jazzy-gpu }
     steps:
       - uses: actions/checkout@v7
 
@@ -49,9 +58,9 @@ jobs:
         id: tags
         run: |
           image="ghcr.io/first-motive/fm-docker"
-          tags="$image:humble"
+          tags="$image:${{ matrix.tag }}"
           case "$GITHUB_REF" in
-            refs/tags/v*) tags="$tags,$image:${GITHUB_REF#refs/tags/}" ;;
+            refs/tags/v*) tags="$tags,$image:${GITHUB_REF#refs/tags/}${{ matrix.version-suffix }}" ;;
           esac
           echo "tags=$tags" >> "$GITHUB_OUTPUT"
           echo "publishing: $tags"
@@ -62,11 +71,13 @@ jobs:
         with:
           context: .
           file: Dockerfile.base
+          target: ${{ matrix.target }}
+          build-args: ROS_DISTRO=${{ matrix.distro }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.tag }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.tag }}
 
       # The digest is what compose.yaml pins, and it is only knowable after the
       # push. Putting it in the job summary saves a registry query when the
@@ -74,7 +85,7 @@ jobs:
       - name: Report the digest
         run: |
           {
-            echo "### Published"
+            echo "### Published ${{ matrix.tag }}"
             echo ""
             echo "tags: \`${{ steps.tags.outputs.tags }}\`"
             echo ""

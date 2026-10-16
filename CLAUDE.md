@@ -19,9 +19,11 @@ traces back here. Part of First Motive's ROS2 stack, consumed by
 
 ## Layers
 
-- `Dockerfile.base` is the minimal base only: ROS2 Humble, build tooling, viz,
-  xacro, robot/joint state publishers. Control, sim, MoveIt, and the TUI live in
-  downstream repos' images, each `FROM` its parent. Do not add a downstream
+- `Dockerfile.base` is the minimal base only: ROS2 (Humble by default, Jazzy via
+  `ROS_DISTRO`), build tooling, viz, xacro, robot/joint state publishers. Its
+  `gpu` target adds only the NVIDIA toolkit env and EGL/GL libs. Control, sim,
+  MoveIt, and the TUI live in downstream repos' images, each `FROM` its parent.
+  Do not add a downstream
   layer's deps here — that would re-monolith the base.
 - `compose.yaml` is generic: it runs `${FM_IMAGE}` and mounts `${FM_WS}`. An
   overlay carries only host-specific bits and never per-repo specifics, which
@@ -35,9 +37,11 @@ traces back here. Part of First Motive's ROS2 stack, consumed by
 ## Publishing
 
 `Dockerfile.base` is built multi-arch (arm64 + amd64) and pushed to
-`ghcr.io/first-motive/fm-docker:humble` by `.github/workflows/publish.yml` on
-every push to `main` that touches the image. A published release additionally
-pushes `:vX.Y.Z`, taken from the release's git tag.
+`ghcr.io/first-motive/fm-docker` as `:humble`, `:jazzy` and `:jazzy-gpu` by
+`.github/workflows/publish.yml` on every push to `main` that touches the image.
+A published release additionally pushes `:vX.Y.Z` (humble), `:vX.Y.Z-jazzy` and
+`:vX.Y.Z-jazzy-gpu`, taken from the release's git tag. The image matrix in
+`ci.yml` and `publish.yml` moves together.
 
 `:humble` moves; a version tag and a digest do not. Downstream `Dockerfile`s
 build `FROM :humble`, but anything that provisions a host holds the digest —

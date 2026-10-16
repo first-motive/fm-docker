@@ -51,19 +51,40 @@ curl -fsSL https://raw.githubusercontent.com/first-motive/fm-docker/v0.1.7/insta
 Source: [`docs/diagrams/images.d2`](docs/diagrams/images.d2) — re-render with
 [`docs/diagrams/render.sh`](docs/diagrams/render.sh).
 
-The base image is published to GHCR multi-arch (arm64 + amd64), so one tag runs
-on Apple silicon (OrbStack) and Linux:
+Three images are published to GHCR multi-arch (arm64 + amd64), so one tag runs
+on Apple silicon (OrbStack) and Linux. All three build from `Dockerfile.base`,
+selected by the `ROS_DISTRO` build arg and the build target:
+
+| Image       | `ROS_DISTRO` | Target | Contents                                                   |
+| ----------- | ------------ | ------ | ---------------------------------------------------------- |
+| `humble`    | `humble`     | `base` | ROS2 Humble, build tooling, viz, xacro, rsp/jsp.           |
+| `jazzy`     | `jazzy`      | `base` | The same on ROS2 Jazzy.                                    |
+| `jazzy-gpu` | `jazzy`      | `gpu`  | `jazzy` plus NVIDIA container toolkit env and EGL/GL libs for headless rendering. |
 
 ```
 ghcr.io/first-motive/fm-docker:humble                  # moves with main
-ghcr.io/first-motive/fm-docker:v0.1.1                  # a release, never moves
+ghcr.io/first-motive/fm-docker:jazzy                   # moves with main
+ghcr.io/first-motive/fm-docker:jazzy-gpu               # moves with main
+ghcr.io/first-motive/fm-docker:v0.1.1                  # a humble release, never moves
+ghcr.io/first-motive/fm-docker:v0.1.1-jazzy            # a jazzy release, never moves
+ghcr.io/first-motive/fm-docker:v0.1.1-jazzy-gpu        # a jazzy-gpu release, never moves
 ghcr.io/first-motive/fm-docker@sha256:<digest>         # one exact image
 ```
 
-`:humble` is the tag a downstream `Dockerfile` builds `FROM` — a layer wants the
+The GPU image has no CUDA toolkit: the NVIDIA container toolkit mounts the host
+driver at run time, and a layer that needs the CUDA runtime brings it with its
+own wheels. Run it with `--gpus all` or the Linux overlay. `gpu` is the last
+stage, so a build without `--target` yields it; pass `--target base` for the
+base. To build one locally:
+
+```bash
+docker build -f Dockerfile.base --build-arg ROS_DISTRO=jazzy --target gpu -t fm-docker:jazzy-gpu .
+```
+
+A moving tag (`:humble`, `:jazzy`, `:jazzy-gpu`) is what a downstream `Dockerfile` builds `FROM` — a layer wants the
 newest base it can rebuild against. Anything that provisions a host uses the
 digest or a version tag instead, which is why `compose.yaml` pins the digest.
-Left on `:humble`, a rebuild would change what every provisioned host runs the
+Left on a moving tag, a rebuild would change what every provisioned host runs the
 next time it pulled, retroactively and with no commit to point at.
 
 ## Releasing
@@ -72,8 +93,9 @@ A release publishes the image and is the only thing that mints a version tag:
 
 1. Tag the commit and publish the GitHub release: `vX.Y.Z`, matching the tag the
    `run.sh` and `install.sh` curl lines already carry.
-2. `publish.yml` builds multi-arch and pushes `:humble` plus `:vX.Y.Z`. The job
-   summary prints the digest of that build.
+2. `publish.yml` builds each image multi-arch and pushes `:humble` plus
+   `:vX.Y.Z`, `:jazzy` plus `:vX.Y.Z-jazzy`, and `:jazzy-gpu` plus
+   `:vX.Y.Z-jazzy-gpu`. The job summary prints the digest of each build.
 3. Paste the digest into the `image:` line of `compose.yaml` and the `IMAGE`
    line of `install.sh`, which move together, and commit.
 
@@ -92,7 +114,7 @@ the rendered pin.
 
 | File                  | Role                                                          |
 | --------------------- | ------------------------------------------------------------- |
-| `Dockerfile.base`     | Minimal ROS2 Humble base: build tooling, viz, xacro, rsp/jsp. |
+| `Dockerfile.base`     | Minimal ROS2 base (Humble or Jazzy): build tooling, viz, xacro, rsp/jsp; `gpu` target adds NVIDIA/EGL. |
 | `ros_entrypoint.sh`   | Sources the ROS distro, then the workspace overlay if built.  |
 | `scripts/check-tag-refs.sh` | Fails CI when a tag literal disagrees with the rendered pin. |
 | `compose.yaml`        | Shared compose base. Consumers set `FM_IMAGE` + `FM_WS`.      |
@@ -131,11 +153,13 @@ defaulting to the directory you run compose from.
 ## CI
 
 - `ci.yml` — every PR and push to `main`: shellcheck on host scripts, an amd64
-  build of `Dockerfile.base` (no push), and a smoke test for the ROS runtime and
-  description/viz packages.
+  build of each image (no push), a smoke test for the ROS runtime and
+  description/viz packages, and for `jazzy-gpu` a check of the toolkit env and
+  EGL libs.
 - `publish.yml` — push to `main` that touches the image, or a published release:
-  multi-arch (arm64 + amd64) build, push `:humble` to GHCR, plus `:vX.Y.Z` when
-  the run came from a release tag.
+  multi-arch (arm64 + amd64) build of each image, push `:humble`, `:jazzy` and
+  `:jazzy-gpu` to GHCR, plus the version tags when the run came from a release
+  tag.
 
 ## License
 
