@@ -1,16 +1,20 @@
 # First Motive ROS2 base image — the root of the inheritance chain.
 #
-# Minimal on purpose: ROS2 Humble, the colcon/vcs/rosdep build tooling, and the
+# Minimal on purpose: ROS2 (Humble or Jazzy), the colcon/vcs/rosdep build tooling, and the
 # packages needed to view any robot (xacro + robot/joint state publishers +
 # foxglove-bridge). Control, simulation, MoveIt, and the TUI are NOT here — each
 # lives in a downstream repo's image, FROM this base or FROM a layer above it.
 # Keeping the base small is what lets the layers stay cached and independent.
 #
-# ros:humble-ros-base is multi-arch (arm64 + amd64) — the same Dockerfile builds
-# on Apple silicon (OrbStack) and on Linux. No GPU or hardware assumptions live
-# here; those are compose overlays in the consuming repo.
-FROM ros:humble-ros-base
+# ROS_DISTRO picks the distro; humble is the default so an unqualified build is
+# unchanged. ros:<distro>-ros-base is multi-arch (arm64 + amd64) — the same
+# Dockerfile builds on Apple silicon (OrbStack) and on Linux. The `base` stage
+# makes no GPU or hardware assumptions; the `gpu` stage below adds only what the
+# NVIDIA container toolkit needs, and the rest stays in compose overlays.
+ARG ROS_DISTRO=humble
+FROM ros:${ROS_DISTRO}-ros-base AS base
 
+ARG ROS_DISTRO
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Workspace tooling + the minimal viz/description runtime.
@@ -45,19 +49,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       cmake \
       git \
-      ros-humble-foxglove-bridge \
-      ros-humble-robot-state-publisher \
-      ros-humble-joint-state-publisher \
-      ros-humble-xacro \
-      ros-humble-rosidl-generator-dds-idl \
-      ros-humble-rmw-cyclonedds-cpp \
+      ros-${ROS_DISTRO}-foxglove-bridge \
+      ros-${ROS_DISTRO}-robot-state-publisher \
+      ros-${ROS_DISTRO}-joint-state-publisher \
+      ros-${ROS_DISTRO}-xacro \
+      ros-${ROS_DISTRO}-rosidl-generator-dds-idl \
+      ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
     && rm -rf /var/lib/apt/lists/*
 
 # trimesh + pycollada power fm_description's OpenArm .dae -> .stl conversion
 # (trimesh ignores the mixed COLLADA up_axis and exports raw geometry). Neither is
 # in the ROS base apt sources (Ubuntu universe), so install from PyPI. trimesh is
 # pinned to 4.x: the raw-geometry export the converter relies on is 4.x behaviour.
-RUN pip3 install --no-cache-dir "trimesh>=4,<5" pycollada
+# Jazzy's Ubuntu 24.04 marks the system Python externally managed (PEP 668), so
+# pip needs the override there; the older pip on Humble ignores the variable.
+RUN PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install --no-cache-dir "trimesh>=4,<5" pycollada
 
 WORKDIR /ws
 
@@ -67,3 +73,30 @@ RUN chmod +x /ros_entrypoint.sh
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["bash"]
+
+# GPU variant: the base plus what headless NVIDIA rendering needs. It is the
+# last stage, so a build without --target yields gpu; CI, publish and run.sh
+# always pass --target.
+#
+# No CUDA base image: the toolkit mounts the host driver (libcuda, libEGL_nvidia)
+# at run time, and a layer that needs the CUDA runtime gets it from its own
+# wheels (e.g. PyTorch). Carrying the CUDA toolkit here would bloat every child.
+FROM base AS gpu
+
+# Read by the NVIDIA container toolkit: expose every GPU, and mount the compute
+# (CUDA), graphics (EGL/GL) and utility (nvidia-smi) driver libraries.
+ENV NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,graphics,utility
+
+# libglvnd dispatchers for EGL/GL/GLES. The vendor file points the EGL
+# dispatcher at the driver's libEGL_nvidia, which the toolkit mounts but older
+# toolkit releases do not register — without it, headless EGL falls back to
+# software or fails.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libegl1 \
+      libgl1 \
+      libgles2 \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /usr/share/glvnd/egl_vendor.d \
+    && printf '%s\n' '{"file_format_version":"1.0.0","ICD":{"library_path":"libEGL_nvidia.so.0"}}' \
+      > /usr/share/glvnd/egl_vendor.d/10_nvidia.json

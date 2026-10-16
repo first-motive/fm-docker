@@ -133,7 +133,7 @@ run_macos() {
 
   if [ "$build" -eq 1 ]; then
     echo "Building Dockerfile.base locally as $LOCAL_IMAGE ..."
-    docker build -f "$REPO_DIR/Dockerfile.base" -t "$LOCAL_IMAGE" "$REPO_DIR"
+    docker build -f "$REPO_DIR/Dockerfile.base" --target base -t "$LOCAL_IMAGE" "$REPO_DIR"
     # Override the digest compose pins by default, or compose would run the
     # published image and the local build would sit there unused.
     export FM_IMAGE="$LOCAL_IMAGE"
