@@ -36,6 +36,7 @@ jobs:
           - { distro: humble, target: base, tag: humble, version-suffix: "" }
           - { distro: jazzy, target: base, tag: jazzy, version-suffix: -jazzy }
           - { distro: jazzy, target: gpu, tag: jazzy-gpu, version-suffix: -jazzy-gpu }
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
